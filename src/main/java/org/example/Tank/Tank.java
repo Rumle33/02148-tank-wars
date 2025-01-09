@@ -40,9 +40,9 @@ public class Tank extends Application {
         tankBody = new Rectangle(TANK_SIZE, TANK_SIZE, Color.GREEN);
 
         // Tank barrel
-        tankBarrel = new Rectangle(BARREL_WIDTH, BARREL_HEIGHT, Color.DARKGRAY);
-        tankBarrel.setTranslateX(TANK_SIZE / 2 - BARREL_WIDTH / 2); // Center barrel horizontally
-        tankBarrel.setTranslateY(-BARREL_HEIGHT); // Extend barrel upward from the tank body
+        tankBarrel = new Rectangle(BARREL_HEIGHT, BARREL_WIDTH, Color.DARKGRAY);
+        tankBarrel.setTranslateY(TANK_SIZE / 2 - BARREL_WIDTH / 2); // Center barrel horizontally
+        tankBarrel.setTranslateX(BARREL_HEIGHT); // Extend barrel upward from the tank body
 
         // Group the tank body and barrel
         tankGroup = new Group(tankBody, tankBarrel);
