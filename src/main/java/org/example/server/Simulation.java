@@ -17,7 +17,7 @@ public class Simulation {
 				}
 					
 				long deltaTime = currentTime - lastTime;
-				double delta = ((double)deltaTime * Simulation.UPS) / 1000.0;
+				float delta = ((float)deltaTime * Simulation.UPS) / 1000.0f;
 
 				// do update
 
