@@ -11,12 +11,12 @@ public class Simulation {
 		while (true) {
 			long currentTime = System.currentTimeMillis();
 
-			while (currentTime - lastTime < 1000 / Server.UPS) {
+			while (currentTime - lastTime < 1000 / Simulation.UPS) {
 				Thread.sleep(1);
 			}
 
 			long deltaTime = currentTime - lastTime;
-			double delta = ((double)deltaTime * UPS) / 1000.0 
+			double delta = ((double)deltaTime * Simulation.UPS) / 1000.0 
 
 			// do update
 
