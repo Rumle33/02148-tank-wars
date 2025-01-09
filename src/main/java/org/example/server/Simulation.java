@@ -11,7 +11,7 @@ public class Simulation {
 		while (true) {
 			long currentTime = System.currentTimeMillis();
 
-			while (lastTime - currentTime < 1000 / Server.UPS) {
+			while (currentTime - lastTime < 1000 / Server.UPS) {
 				Thread.sleep(1);
 			}
 
