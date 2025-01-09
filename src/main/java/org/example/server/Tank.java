@@ -35,7 +35,7 @@ public class Tank implements GameObject {
 
 		this.rotation = this.rotation + this.angularVelocity * delta;
 		
-		Vector2f translate = MathUtil.rotate2f(new Vector2f(x, y), this.rotation);
+		Vector2f translate = new Vector2f(x, y).rotate(this.rotation);
 		this.x = this.x + translate.x * delta;
 		this.y = this.y + translate.y * delta;
 	}
