@@ -7,26 +7,30 @@ public class Simulation {
 	public void run() {
 
 		long lastTime = System.currentTimeMillis();
+		
+		try {
+			while (true) {
+				long currentTime = System.currentTimeMillis();
 
-		while (true) {
-			long currentTime = System.currentTimeMillis();
+				while (currentTime - lastTime < 1000 / Simulation.UPS) {
+					Thread.sleep(1);
+				}
+					
+				long deltaTime = currentTime - lastTime;
+				double delta = ((double)deltaTime * Simulation.UPS) / 1000.0;
 
-			while (currentTime - lastTime < 1000 / Simulation.UPS) {
-				Thread.sleep(1);
+				// do update
+
+				
+
+				// end of update
+				
+				lastTime = currentTime;
 			}
-
-			long deltaTime = currentTime - lastTime;
-			double delta = ((double)deltaTime * Simulation.UPS) / 1000.0 
-
-			// do update
-
-			
-
-			// end of update
-
-			lastTime = currentTime;
+		
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
-
 
 	}	
 
