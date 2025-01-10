@@ -6,13 +6,16 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class Tank extends Application {
 
@@ -21,6 +24,9 @@ public class Tank extends Application {
     private String playerName;
     private final Map<String, Group> tanks = new HashMap<>();
     private Pane root;
+
+    private final Set<String> keysPressed = new HashSet<>();
+    private long lastShotTime = 0;
 
     @Override
     public void start(Stage primaryStage) {
@@ -36,6 +42,8 @@ public class Tank extends Application {
             primaryStage.show();
 
             new Thread(this::joinLobby).start();
+
+            setupKeyHandling(scene);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -53,32 +61,60 @@ public class Tank extends Application {
         }
     }
 
-    private void startGame() {
-        root.getScene().setOnKeyPressed(event -> {
-        try {
-            switch (event.getCode()) {
-                case W -> gameSpace.put("ACTION", playerName, "MOVE", 1.0f); // Forward
-                case S -> gameSpace.put("ACTION", playerName, "MOVE", -1.0f); // Backward
-                case A -> gameSpace.put("ACTION", playerName, "ROTATE", -1.0f); // Rotate Left
-                case D -> gameSpace.put("ACTION", playerName, "ROTATE", 1.0f); // Rotate Right
-                case SPACE -> gameSpace.put("ACTION", playerName, "SHOOT", 0.0f); // Shoot
+    private void setupKeyHandling(Scene scene) {
+        scene.setOnKeyPressed(event -> {
+            keysPressed.add(event.getCode().toString());
+            if (event.getCode().toString().equals("SPACE")) {
+                shootProjectile();
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    });
+            sendActionsToServer();
+        });
 
-        root.getScene().setOnKeyReleased(event -> {
+        scene.setOnKeyReleased(event -> {
+            keysPressed.remove(event.getCode().toString());
+            sendActionsToServer();
+        });
+    }
+
+    private void shootProjectile() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastShotTime >= 1000) { // 1-second cooldown
+            lastShotTime = currentTime;
+
             try {
-                switch (event.getCode()) {
-                    case W, S -> gameSpace.put("ACTION", playerName, "MOVE", 0.0f); // Stop movement
-                    case A, D -> gameSpace.put("ACTION", playerName, "ROTATE", 0.0f); // Stop rotation
-                }
+                gameSpace.put("ACTION", playerName, "SHOOT", 0.0f);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        });
+        }
+    }
 
+    private void sendActionsToServer() {
+        float move = 0.0f;
+        float rotate = 0.0f;
+
+        if (keysPressed.contains("W")) {
+            move += 3.0f;
+        }
+        if (keysPressed.contains("S")) {
+            move -= 3.0f;
+        }
+        if (keysPressed.contains("A")) {
+            rotate -= 3.0f;
+        }
+        if (keysPressed.contains("D")) {
+            rotate += 3.0f;
+        }
+
+        try {
+            gameSpace.put("ACTION", playerName, "MOVE", move);
+            gameSpace.put("ACTION", playerName, "ROTATE", rotate);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startGame() {
         startGameLoop();
     }
 
@@ -128,9 +164,9 @@ public class Tank extends Application {
                 double y = Double.parseDouble(parts[2]);
 
                 javafx.application.Platform.runLater(() -> {
-                    Rectangle projectile = new Rectangle(10, 10, Color.RED);
-                    projectile.setTranslateX(x - 5);
-                    projectile.setTranslateY(y - 5);
+                    Circle projectile = new Circle(5, Color.RED);
+                    projectile.setTranslateX(x);
+                    projectile.setTranslateY(y);
                     root.getChildren().add(projectile);
 
                     // Schedule to remove projectile after a short time
@@ -146,7 +182,6 @@ public class Tank extends Application {
             }
         }
     }
-
 
     public static void main(String[] args) {
         launch(args);
