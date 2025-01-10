@@ -3,13 +3,17 @@ package org.example.server;
 import org.example.util.Vector2f;
 
 public class Projectile implements GameObject {
-	
-	public float x; 
+	public float x;
 	public float y;
 	public float rotation;
-	public float velocity;
+	public float velocity = 400.0f; // Adjust for visible speed
+	public float ttl = 3.0f; // Time to live in seconds
 
-	public float ttl;
+	public Projectile(float x, float y, float rotation) {
+		this.x = x;
+		this.y = y;
+		this.rotation = rotation;
+	}
 
 	@Override
 	public boolean update(Simulation simulation, float delta) {
@@ -25,5 +29,7 @@ public class Projectile implements GameObject {
 		return true;
 	}
 
-	
+	public boolean isAlive() {
+		return this.ttl >= 0;
+	}
 }
