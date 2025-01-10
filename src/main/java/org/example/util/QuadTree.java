@@ -35,6 +35,15 @@ public class QuadTree<T extends AABB>  {
 		this.depth = depth;
 	}
 
+	public void clear() {
+		this.split = false;
+		this.ul = null;
+		this.ur = null;
+		this.bl = null;
+		this.br = null;
+		this.leaves.clear();
+	}
+
 	public void insert(T item) {
 		
 		final float x0 = item.getAABBX();

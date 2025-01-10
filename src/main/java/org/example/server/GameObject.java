@@ -1,6 +1,8 @@
 package org.example.server;
 
-public interface GameObject {
+import org.example.util.AABB;
+
+public interface GameObject extends AABB {
 	
 	public boolean update(Simulation simulation, float delta);
 

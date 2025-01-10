@@ -47,6 +47,16 @@ public class Tank implements GameObject {
 		x += dx;
 		y += dy;
 
+		// update AABB
+
+		final float width = 40.0f;
+		final float height = 40.0f;
+
+		this.aabb_width = (float)(Math.cos(this.rotation) * width + Math.sin(this.rotation) * height);
+		this.aabb_height = (float)(Math.sin(this.rotation) * width + Math.sin(this.rotation) * height);
+		this.aabb_x = this.x - this.aabb_width * 0.5f;
+		this.aabb_y = this.y - this.aabb_height * 0.5f;
+
 		return true;
 	}
 
@@ -56,5 +66,28 @@ public class Tank implements GameObject {
 				.append(this.x).append(" ")
 				.append(this.y).append(" ")
 				.append(this.rotation).append("\n");
+	}
+
+	public float aabb_x, aabb_y;
+	public float aabb_width, aabb_height;
+
+	@Override
+	public float getAABBX() {
+		return this.aabb_x;
+	}
+
+	@Override
+	public float getAABBY() {
+		return this.aabb_y;
+	}
+
+	@Override
+	public float getAABBWidth() {
+		return this.aabb_width;
+	}
+
+	@Override
+	public float getAABBHeight() {
+		return this.aabb_height;
 	}
 }

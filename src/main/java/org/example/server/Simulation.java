@@ -2,6 +2,8 @@ package org.example.server;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.example.util.QuadTree;
 import org.jspace.Space;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +17,8 @@ public class Simulation {
 
 	private List<GameObject> dynamicObjects = new ArrayList<>();
 	private List<GameObject> dynamicBuffer = new ArrayList<>();
+
+	public QuadTree<GameObject> qt = new QuadTree<>(0, 0, 600, 600);
 
     public Simulation(Space gameSpace, List<String> players) {
         this.gameSpace = gameSpace;
@@ -45,7 +49,6 @@ public class Simulation {
 			while (true) {
 				long currentTime = System.currentTimeMillis();
 
-
 				while (currentTime - lastTime < MILLI_WAIT) {
 					Thread.sleep(Math.max(0, MILLI_WAIT - currentTime + lastTime - 1));
 					currentTime = System.currentTimeMillis();
@@ -54,18 +57,30 @@ public class Simulation {
 				long deltaTime = currentTime - lastTime;
 				float delta = ((float)deltaTime) / 1000.0f;
 
+				dynamicBuffer.clear();
 				// ===============================
 				// begining of update
 
 				processPlayerActions();
+
+				qt.clear();
 				
-				dynamicBuffer.clear();
 				for (GameObject object : this.dynamicObjects) {
 					if (object.update(this, delta)) {
 						// dynamic objects return true to continue living
 						dynamicBuffer.add(object);
 					}
+					qt.insert(object);
 				}
+
+				// do physics
+
+				for (GameObject object : this.dynamicObjects) {
+					
+				}
+
+				// generate quadtree
+
 
 				broadcastGameState();
 				

@@ -40,4 +40,26 @@ public class Projectile implements GameObject {
 				.append(this.y).append(" ")
 				.append(this.rotation).append("\n");
 	}
+
+	public static final float RADIUS = 5.0f;
+
+	@Override
+	public float getAABBX() {
+		return this.x - Projectile.RADIUS;
+	}
+
+	@Override
+	public float getAABBY() {
+		return this.y - Projectile.RADIUS;
+	}
+
+	@Override
+	public float getAABBWidth() {
+		return Projectile.RADIUS * 2;
+	}
+
+	@Override
+	public float getAABBHeight() {
+		return Projectile.RADIUS * 2;
+	}
 }
