@@ -12,35 +12,31 @@ public class Tank implements GameObject {
 	public float acceleration;
 	public float angularAcceleration;
 
-	public float maxVelocity = 1000.0f; // Pixels per second
+	public float maxVelocity = 200.0f; // Adjusted for smooth gameplay
 	public float maxAngularVelocity = 90.0f; // Degrees per second
-	public boolean isAlive = true;
 
+	public float friction = 0.95f; // Simulated friction (closer to 1 = less friction)
+	public float angularFriction = 0.95f; // Simulated angular friction
+
+	@Override
 	public void update(float delta) {
-		if (!isAlive) return;
-
-		// Gradual stop when no acceleration
-		if (acceleration == 0) {
-			velocity *= 0.95f; // Apply friction
-			if (Math.abs(velocity) < 0.01f) velocity = 0; // Snap to zero
-		}
-		if (angularAcceleration == 0) {
-			angularVelocity *= 0.95f;
-			if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0;
-		}
-
-		// Update velocity and position
+		// Apply acceleration and clamp speed
 		velocity = MathUtil.clamp(velocity + acceleration * delta, -maxVelocity, maxVelocity);
 		angularVelocity = MathUtil.clamp(angularVelocity + angularAcceleration * delta, -maxAngularVelocity, maxAngularVelocity);
+
+		// Apply friction to velocity and angular velocity
+		velocity *= friction;
+		angularVelocity *= angularFriction;
+
+		// Update position and rotation
+		x += Math.cos(Math.toRadians(rotation)) * velocity * delta;
+		y += Math.sin(Math.toRadians(rotation)) * velocity * delta;
 		rotation += angularVelocity * delta;
 
-		float dx = (float) (velocity * Math.cos(Math.toRadians(rotation)) * delta);
-		float dy = (float) (velocity * Math.sin(Math.toRadians(rotation)) * delta);
-		x += dx;
-		y += dy;
+		// Reset acceleration after each update
+		acceleration = 0.0f;
+		angularAcceleration = 0.0f;
 
-		// Reset acceleration after update
-		acceleration = 0;
-		angularAcceleration = 0;
+		System.out.println("Tank: x=" + x + ", y=" + y + ", rotation=" + rotation + ", velocity=" + velocity);
 	}
 }

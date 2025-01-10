@@ -4,8 +4,8 @@ public class Projectile implements GameObject {
 	public float x;
 	public float y;
 	public float rotation;
-	public float velocity = 400.0f; // Adjust for visible speed
-	public float ttl = 3.0f; // Time to live in seconds
+	public float velocity = 400.0f;
+	public float ttl = 3.0f;
 
 	public Projectile(float x, float y, float rotation) {
 		this.x = x;
