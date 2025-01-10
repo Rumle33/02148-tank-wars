@@ -53,7 +53,7 @@ public class Simulation {
 				}
 					
 				long deltaTime = currentTime - lastTime;
-				float delta = ((float)deltaTime * Simulation.UPS) / 1000.0f;
+				float delta = ((float)deltaTime) / 1000.0f;
 
 				processPlayerActions();
 				updateTanks(delta);

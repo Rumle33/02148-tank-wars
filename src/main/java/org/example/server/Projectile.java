@@ -6,7 +6,7 @@ public class Projectile implements GameObject {
 	public float x;
 	public float y;
 	public float rotation;
-	public float velocity = 400.0f; // Adjust for visible speed
+	public float velocity = 100.0f; // Adjust for visible speed
 	public float ttl = 3.0f; // Time to live in seconds
 
 	public Projectile(float x, float y, float rotation) {
@@ -22,7 +22,7 @@ public class Projectile implements GameObject {
 			return false;
 		}
 
-		Vector2f translate = new Vector2f(1.0f, 0.0f).rotate(rotation);
+		Vector2f translate = new Vector2f(velocity, 0.0f).rotate(rotation);
 		this.x = this.x + translate.x * delta;
 		this.y = this.y + translate.y * delta;
 

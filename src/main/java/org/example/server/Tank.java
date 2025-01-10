@@ -13,8 +13,8 @@ public class Tank implements GameObject {
 	public float acceleration;
 	public float angularAcceleration;
 
-	public float maxVelocity = 1000.0f; // Pixels per second
-	public float maxAngularVelocity = (float) Math.toRadians(90.0f); // Degrees per second
+	public float maxVelocity = 100.0f; // Pixels per second
+	public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
 	public boolean isAlive = true;
 
 	public boolean update(Simulation simulation, float delta) {
@@ -22,11 +22,11 @@ public class Tank implements GameObject {
 
 		// Gradual stop when no acceleration
 		if (acceleration == 0) {
-			velocity *= 0.95f; // Apply friction
+			velocity *= 0.9f; // Apply friction
 			if (Math.abs(velocity) < 0.01f) velocity = 0; // Snap to zero
 		}
 		if (angularAcceleration == 0) {
-			angularVelocity *= 0.95f;
+			angularVelocity *= 0.9f;
 			if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0;
 		}
 
