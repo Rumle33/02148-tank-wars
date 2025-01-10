@@ -2,6 +2,6 @@ package org.example.server;
 
 public interface GameObject {
 	
-	public void update(float delta);
+	public boolean update(Simulation simulation, float delta);
 
 }

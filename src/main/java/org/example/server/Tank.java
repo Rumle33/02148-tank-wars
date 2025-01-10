@@ -19,7 +19,7 @@ public class Tank implements GameObject {
 	public float maxVelocity;
 	public float maxAngularVelocity;
 
-	public void update(float delta) {
+	public boolean update(Simulation simulation, float delta) {
 
 		this.velocity = MathUtil.clamp(
 			this.velocity + this.acceleration * delta, 
@@ -38,5 +38,7 @@ public class Tank implements GameObject {
 		Vector2f translate = new Vector2f(x, y).rotate(this.rotation);
 		this.x = this.x + translate.x * delta;
 		this.y = this.y + translate.y * delta;
+
+		return true;
 	}
 }
