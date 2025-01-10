@@ -4,112 +4,127 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Line;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public class Map extends Application {
 
-    private static final int GRID_SIZE = 15;
-    private static final int CELL_SIZE = 40;
-    private static final int WALL_THICKNESS = 1;
+    private static final int GRID_SIZE = 15;  // Size of the grid
+    private static final int CELL_SIZE = 40; // Size of each cell
 
-    // Maze dimensions and structures
-    private boolean[][] verticalWalls;
-    private boolean[][] horizontalWalls;
-    private boolean[][] visited;
+    private final List<Wall> walls = new ArrayList<>(); // To store all walls
+    private final Random random = new Random();
 
     @Override
     public void start(Stage primaryStage) {
         Pane root = new Pane();
         root.setPrefSize(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
 
-        // Initialize maze structures
-        verticalWalls = new boolean[GRID_SIZE][GRID_SIZE + 1];
-        horizontalWalls = new boolean[GRID_SIZE + 1][GRID_SIZE];
-        visited = new boolean[GRID_SIZE][GRID_SIZE];
+        // Initialize walls
+        initializeWalls();
 
-        // Generate maze
-        generateMaze(0, 0);
+        // Remove at least 2 walls for each cell
+        ensureTwoWallsRemovedPerCell();
 
-        // Draw the maze
-        drawMaze(root);
+        // Draw the map
+        drawWalls(root);
 
         Scene scene = new Scene(root);
         primaryStage.setScene(scene);
-        primaryStage.setTitle("Maze Game with Path");
+        primaryStage.setTitle("Tank Trouble Map Generator");
         primaryStage.show();
     }
 
-    private void generateMaze(int x, int y) {
-        visited[x][y] = true;
+    /**
+     * Initializes all walls for the grid.
+     */
+    private void initializeWalls() {
+        for (int i = 0; i < GRID_SIZE; i++) {
+            for (int j = 0; j < GRID_SIZE; j++) {
+                // Add walls for the current cell
+                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, i * CELL_SIZE)); // Top wall
+                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, j * CELL_SIZE, (i + 1) * CELL_SIZE)); // Left wall
 
-
-        List<int[]> directions = new ArrayList<>();
-        directions.add(new int[]{1, 0}); // Down
-        directions.add(new int[]{-1, 0}); // Up
-        directions.add(new int[]{0, 1}); // Right
-        directions.add(new int[]{0, -1}); // Left
-
-        // Shuffle directions to create a random maze
-        Collections.shuffle(directions);
-
-        for (int[] dir : directions) {
-            int nx = x + dir[0];
-            int ny = y + dir[1];
-
-
-            if (nx >= 0 && ny >= 0 && nx < GRID_SIZE && ny < GRID_SIZE && !visited[nx][ny]) {
-
-                if (dir[0] == 1) {
-                    horizontalWalls[x + 1][y] = true;
-                } else if (dir[0] == -1) {
-                    horizontalWalls[x][y] = true;
-                } else if (dir[1] == 1) {
-                    verticalWalls[x][y + 1] = true;
-                } else if (dir[1] == -1) {
-                    verticalWalls[x][y] = true;
+                // Add boundary walls
+                if (i == GRID_SIZE - 1) {
+                    walls.add(new Wall(j * CELL_SIZE, (i + 1) * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE)); // Bottom wall
                 }
-
-                generateMaze(nx, ny);
+                if (j == GRID_SIZE - 1) {
+                    walls.add(new Wall((j + 1) * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE)); // Right wall
+                }
             }
         }
     }
 
-    private void drawMaze(Pane root) {
-        // Draw horizontal walls
-        for (int i = 0; i <= GRID_SIZE; i++) {
+    /**
+     * Ensures at least 2 walls are removed for each cell.
+     */
+    private void ensureTwoWallsRemovedPerCell() {
+        for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
-                if (!horizontalWalls[i][j]) {
-                    Rectangle wall = new Rectangle(
-                            j * CELL_SIZE,
-                            i * CELL_SIZE - WALL_THICKNESS / 2.0,
-                            CELL_SIZE,
-                            WALL_THICKNESS
-                    );
-                    wall.setFill(Color.BLACK);
-                    root.getChildren().add(wall);
-                }
+                // Remove two walls for the current cell
+                removeRandomWall(j, i);
+                removeRandomWall(j, i);
             }
         }
+    }
 
-        // Draw vertical walls
-        for (int i = 0; i < GRID_SIZE; i++) {
-            for (int j = 0; j <= GRID_SIZE; j++) {
-                if (!verticalWalls[i][j]) {
-                    Rectangle wall = new Rectangle(
-                            j * CELL_SIZE - WALL_THICKNESS / 2.0,
-                            i * CELL_SIZE,
-                            WALL_THICKNESS,
-                            CELL_SIZE
-                    );
-                    wall.setFill(Color.BLACK);
-                    root.getChildren().add(wall);
-                }
-            }
+    /**
+     * Removes a random wall for a given cell (x, y).
+     */
+    private void removeRandomWall(int x, int y) {
+        // List of potential walls to remove
+        List<Wall> cellWalls = new ArrayList<>();
+
+        // Add the walls of the current cell if they exist
+        if (y > 0) {
+            cellWalls.add(findWall(x * CELL_SIZE, y * CELL_SIZE, (x + 1) * CELL_SIZE, y * CELL_SIZE)); // Top wall
+        }
+        if (x < GRID_SIZE - 1) {
+            cellWalls.add(findWall((x + 1) * CELL_SIZE, y * CELL_SIZE, (x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE)); // Right wall
+        }
+        if (y < GRID_SIZE - 1) {
+            cellWalls.add(findWall(x * CELL_SIZE, (y + 1) * CELL_SIZE, (x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE)); // Bottom wall
+        }
+        if (x > 0) {
+            cellWalls.add(findWall(x * CELL_SIZE, y * CELL_SIZE, x * CELL_SIZE, (y + 1) * CELL_SIZE)); // Left wall
+        }
+
+        // Randomly remove one wall from the list
+        Wall wallToRemove = cellWalls.stream()
+                .filter(wall -> wall != null) // Ensure the wall exists
+                .skip(random.nextInt(cellWalls.size())) // Randomly pick a wall
+                .findFirst()
+                .orElse(null);
+
+        if (wallToRemove != null) {
+            walls.remove(wallToRemove);
+        }
+    }
+
+    /**
+     * Finds a wall matching the given coordinates.
+     */
+    private Wall findWall(double startX, double startY, double endX, double endY) {
+        return walls.stream()
+                .filter(wall -> wall.matches(startX, startY, endX, endY))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Draws all the remaining walls on the screen.
+     */
+    private void drawWalls(Pane root) {
+        for (Wall wall : walls) {
+            Line line = new Line(wall.startX, wall.startY, wall.endX, wall.endY);
+            line.setStroke(Color.BLACK);
+            line.setStrokeWidth(2);
+            root.getChildren().add(line);
         }
     }
 
