@@ -4,138 +4,151 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import org.jspace.RemoteSpace;
+import org.jspace.Space;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Tank extends Application {
 
-    private static final double WIDTH = 800;
-    private static final double HEIGHT = 600;
-    private static final double TANK_SIZE = 40;
-    private static final double BARREL_WIDTH = 10;
-    private static final double BARREL_HEIGHT = 30;
-    private static final double SPEED = 5;
-    private static final double ROTATION_SPEED = 5;
-
-    private Group tankGroup; // Group containing the tank body and barrel
-    private Rectangle tankBody;
-    private Rectangle tankBarrel;
-    private double tankRotation = 0; // Tank rotation in degrees
+    private Space lobbySpace;
+    private Space gameSpace;
+    private String playerName;
+    private final Map<String, Group> tanks = new HashMap<>();
     private Pane root;
-    private List<Projectile> projectiles;
 
     @Override
     public void start(Stage primaryStage) {
-        root = new Pane();
-        Scene scene = new Scene(root, WIDTH, HEIGHT);
+        try {
+            lobbySpace = new RemoteSpace("tcp://localhost:12345/lobby?keep");
+            gameSpace = new RemoteSpace("tcp://localhost:12345/game?keep");
 
-        // Tank body
-        tankBody = new Rectangle(TANK_SIZE, TANK_SIZE, Color.GREEN);
+            root = new Pane();
+            Scene scene = new Scene(root, 800, 600);
 
-        // Tank barrel
-        tankBarrel = new Rectangle(BARREL_HEIGHT, BARREL_WIDTH, Color.DARKGRAY);
-        tankBarrel.setTranslateY(TANK_SIZE / 2 - BARREL_WIDTH / 2); // Center barrel horizontally
-        tankBarrel.setTranslateX(BARREL_HEIGHT); // Extend barrel upward from the tank body
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Tank Game");
+            primaryStage.show();
 
-        // Group the tank body and barrel
-        tankGroup = new Group(tankBody, tankBarrel);
-        tankGroup.setTranslateX(WIDTH / 2 - TANK_SIZE / 2); // Initial position
-        tankGroup.setTranslateY(HEIGHT / 2 - TANK_SIZE / 2);
+            new Thread(this::joinLobby).start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-        projectiles = new ArrayList<>();
-        root.getChildren().add(tankGroup);
+    private void joinLobby() {
+        try {
+            playerName = "Player" + (int) (Math.random() * 1000);
+            lobbySpace.put("JOIN", playerName);
+            lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
 
-        scene.setOnKeyPressed(this::handleKeyPress);
+            javafx.application.Platform.runLater(this::startGame);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
-        primaryStage.setTitle("Tank Game");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+    private void startGame() {
+        root.getScene().setOnKeyPressed(event -> {
+        try {
+            switch (event.getCode()) {
+                case W -> gameSpace.put("ACTION", playerName, "MOVE", 1.0f); // Forward
+                case S -> gameSpace.put("ACTION", playerName, "MOVE", -1.0f); // Backward
+                case A -> gameSpace.put("ACTION", playerName, "ROTATE", -1.0f); // Rotate Left
+                case D -> gameSpace.put("ACTION", playerName, "ROTATE", 1.0f); // Rotate Right
+                case SPACE -> gameSpace.put("ACTION", playerName, "SHOOT", 0.0f); // Shoot
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    });
+
+        root.getScene().setOnKeyReleased(event -> {
+            try {
+                switch (event.getCode()) {
+                    case W, S -> gameSpace.put("ACTION", playerName, "MOVE", 0.0f); // Stop movement
+                    case A, D -> gameSpace.put("ACTION", playerName, "ROTATE", 0.0f); // Stop rotation
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
 
         startGameLoop();
-    }
-
-    private void handleKeyPress(KeyEvent event) {
-        switch (event.getCode()) {
-            case W: // Move forward
-                moveTank(SPEED);
-                break;
-            case S: // Move backward
-                moveTank(-SPEED);
-                break;
-            case A: // Rotate left
-                rotateTank(-ROTATION_SPEED);
-                break;
-            case D: // Rotate right
-                rotateTank(ROTATION_SPEED);
-                break;
-            case SPACE: // Shoot
-                shoot();
-                break;
-        }
-    }
-
-    private void moveTank(double distance) {
-        // Calculate movement based on the current tank rotation
-        double dx = distance * Math.cos(Math.toRadians(tankRotation));
-        double dy = distance * Math.sin(Math.toRadians(tankRotation));
-
-        // Ensure the tank stays within bounds
-        if (tankGroup.getTranslateX() + dx >= 0 && tankGroup.getTranslateX() + dx + TANK_SIZE <= WIDTH) {
-            tankGroup.setTranslateX(tankGroup.getTranslateX() + dx);
-        }
-        if (tankGroup.getTranslateY() + dy >= 0 && tankGroup.getTranslateY() + dy + TANK_SIZE <= HEIGHT) {
-            tankGroup.setTranslateY(tankGroup.getTranslateY() + dy);
-        }
-    }
-
-    private void rotateTank(double angle) {
-        // Update the tank's rotation
-        tankRotation += angle;
-        tankGroup.setRotate(tankRotation);
-    }
-
-    private void shoot() {
-        // Calculate the tip of the barrel based on the current tank rotation
-        double barrelTipX = tankGroup.getTranslateX() + TANK_SIZE / 2 +
-                (BARREL_HEIGHT * Math.cos(Math.toRadians(tankRotation)));
-        double barrelTipY = tankGroup.getTranslateY() + TANK_SIZE / 2 +
-                (BARREL_HEIGHT * Math.sin(Math.toRadians(tankRotation)));
-
-        // Create and add a projectile
-        Projectile projectile = new Projectile(barrelTipX, barrelTipY, tankRotation);
-        projectiles.add(projectile);
-        root.getChildren().add(projectile.getBullet());
     }
 
     private void startGameLoop() {
         AnimationTimer gameLoop = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                updateProjectiles();
+                updateGameState();
             }
         };
         gameLoop.start();
     }
 
-    private void updateProjectiles() {
-        Iterator<Projectile> iterator = projectiles.iterator();
-        while (iterator.hasNext()) {
-            Projectile projectile = iterator.next();
-            projectile.move();
+    private void updateGameState() {
+        try {
+            Object[] state = gameSpace.get(new org.jspace.ActualField("STATE"), new org.jspace.FormalField(String.class));
+            if (state != null) {
+                renderGameState((String) state[1]);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
-            // Remove projectiles that go off-screen
-            if (projectile.getBullet().getX() < 0 || projectile.getBullet().getX() > WIDTH ||
-                    projectile.getBullet().getY() < 0 || projectile.getBullet().getY() > HEIGHT) {
-                root.getChildren().remove(projectile.getBullet());
-                iterator.remove();
+    private void renderGameState(String gameState) {
+        String[] lines = gameState.split("\n");
+        for (String line : lines) {
+            String[] parts = line.split(" ");
+            if (parts[0].startsWith("Player")) {
+                String playerName = parts[0];
+                double x = Double.parseDouble(parts[1]);
+                double y = Double.parseDouble(parts[2]);
+                double rotation = Double.parseDouble(parts[3]);
+
+                javafx.application.Platform.runLater(() -> {
+                    Group tank = tanks.computeIfAbsent(playerName, name -> {
+                        Group newTank = new Group(new Rectangle(40, 40, name.equals(this.playerName) ? Color.GREEN : Color.BLUE));
+                        root.getChildren().add(newTank);
+                        return newTank;
+                    });
+                    tank.setTranslateX(x - 20);
+                    tank.setTranslateY(y - 20);
+                    tank.setRotate(rotation);
+                });
+            } else if (parts[0].equals("Projectile")) {
+                double x = Double.parseDouble(parts[1]);
+                double y = Double.parseDouble(parts[2]);
+
+                javafx.application.Platform.runLater(() -> {
+                    Rectangle projectile = new Rectangle(10, 10, Color.RED);
+                    projectile.setTranslateX(x - 5);
+                    projectile.setTranslateY(y - 5);
+                    root.getChildren().add(projectile);
+
+                    // Schedule to remove projectile after a short time
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(3000); // Match the TTL of the projectile
+                            javafx.application.Platform.runLater(() -> root.getChildren().remove(projectile));
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+                });
             }
         }
+    }
+
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }

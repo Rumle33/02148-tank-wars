@@ -4,18 +4,17 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 public class Projectile {
-    private static final double SIZE = 10; // Size of the projectile
-    private static final double SPEED = 10; // Speed of the projectile
+    private static final double SIZE = 10; // projsize
+    private static final double SPEED = 10; // projspeed
 
     private Rectangle bullet;
-    private double direction; // Direction in degrees
+    private double direction;
 
     public Projectile(double x, double y, double direction) {
         this.direction = direction;
 
-        // Create a graphical representation of the projectile
         bullet = new Rectangle(SIZE, SIZE, Color.RED);
-        bullet.setX(x - SIZE / 2); // Center the bullet
+        bullet.setX(x - SIZE / 2);
         bullet.setY(y - SIZE / 2);
     }
 
