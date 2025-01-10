@@ -157,7 +157,7 @@ public class Tank extends Application {
                     });
                     tank.setTranslateX(x - 20);
                     tank.setTranslateY(y - 20);
-                    tank.setRotate(rotation);
+                    tank.setRotate(Math.toDegrees(rotation));
                 });
             } else if (parts[0].equals("Projectile")) {
                 double x = Double.parseDouble(parts[1]);
