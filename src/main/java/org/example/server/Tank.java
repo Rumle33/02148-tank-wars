@@ -40,10 +40,6 @@ public class Tank implements GameObject {
 		x += dx;
 		y += dy;
 
-		// Reset acceleration after update
-		acceleration = 0;
-		angularAcceleration = 0;
-
 		return true;
 	}
 }
