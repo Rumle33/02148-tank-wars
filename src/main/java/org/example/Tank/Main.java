@@ -1,10 +1,10 @@
 package org.example.Tank;
 
 import javafx.application.Application;
+import org.example.Maps.Map;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Starting JavaFX application...");
         Application.launch(Tank.class, args);
     }
 }
