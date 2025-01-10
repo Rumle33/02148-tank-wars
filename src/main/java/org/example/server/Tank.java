@@ -17,6 +17,13 @@ public class Tank implements GameObject {
 	public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
 	public boolean isAlive = true;
 
+	public final String name;
+
+	public Tank(String name) {
+		this.name = name;
+	}
+
+	@Override
 	public boolean update(Simulation simulation, float delta) {
 		if (!isAlive) return false;
 
@@ -41,5 +48,13 @@ public class Tank implements GameObject {
 		y += dy;
 
 		return true;
+	}
+
+	@Override
+	public void serialize(StringBuilder buffer) {
+		buffer.append(this.name).append(" ")
+				.append(this.x).append(" ")
+				.append(this.y).append(" ")
+				.append(this.rotation).append("\n");
 	}
 }

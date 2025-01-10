@@ -4,13 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jspace.Space;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
-    private final List<Projectile> projectiles = new ArrayList<>();
 
 	public static final int UPS = 50;
 	public static final int MILLI_WAIT = 1000 / UPS;
@@ -26,10 +24,11 @@ public class Simulation {
     private void initializeTanks(List<String> players) {
         int i = 0;
         for (String player : players) {
-            Tank tank = new Tank();
+            Tank tank = new Tank(player);
             tank.x = 200 + (i * 400); // Unique starting positions
             tank.y = 300;
             playerTanks.put(player, tank);
+			this.dynamicObjects.add(tank);
             i++;
             System.out.println("Initialized tank for " + player + " at x=" + tank.x + ", y=" + tank.y);
         }
@@ -55,11 +54,11 @@ public class Simulation {
 				long deltaTime = currentTime - lastTime;
 				float delta = ((float)deltaTime) / 1000.0f;
 
-				processPlayerActions();
-				updateTanks(delta);
-				updateProjectiles(delta);
-				broadcastGameState();
+				// ===============================
+				// begining of update
 
+				processPlayerActions();
+				
 				dynamicBuffer.clear();
 				for (GameObject object : this.dynamicObjects) {
 					if (object.update(this, delta)) {
@@ -68,14 +67,16 @@ public class Simulation {
 					}
 				}
 
+				broadcastGameState();
+				
+				// end of update
+				// ===============================				
 				// swap buffers
 				{
 					List<GameObject> temp = dynamicBuffer;
 					dynamicBuffer = dynamicObjects;
 					dynamicObjects = temp;
 				}
-
-				// end of update
 				
 				lastTime = currentTime;
 				
@@ -113,7 +114,8 @@ public class Simulation {
                         case "SHOOT" -> {
                             // Create a new projectile at the tank's current position and direction
                             Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation);
-                            projectiles.add(projectile);
+                            // projectiles.add(projectile);
+							this.dynamicObjects.add(projectile);
                             System.out.println("Projectile fired by " + playerName + " at x=" + tank.x + ", y=" + tank.y);
                         }
                     }
@@ -124,39 +126,12 @@ public class Simulation {
         }
     }
 
-    private void updateTanks(float delta) {
-        for (Tank tank : playerTanks.values()) {
-            tank.update(this, delta);
-        }
-    }
-
-    private void updateProjectiles(float delta) {
-        for (Iterator<Projectile> iterator = projectiles.iterator(); iterator.hasNext(); ) {
-            Projectile projectile = iterator.next();
-            projectile.update(this, delta);
-            if (!projectile.isAlive()) {
-                iterator.remove();
-            }
-        }
-    }
-
     private void broadcastGameState() {
         try {
             StringBuilder state = new StringBuilder();
-            for (Map.Entry<String, Tank> entry : playerTanks.entrySet()) {
-                String playerName = entry.getKey();
-                Tank tank = entry.getValue();
-                state.append(playerName).append(" ")
-                        .append(tank.x).append(" ")
-                        .append(tank.y).append(" ")
-                        .append(tank.rotation).append("\n");
-            }
-            for (Projectile projectile : projectiles) {
-                state.append("Projectile ")
-                        .append(projectile.x).append(" ")
-                        .append(projectile.y).append(" ")
-                        .append(projectile.rotation).append("\n");
-            }
+			for (GameObject object: this.dynamicObjects) {
+				object.serialize(state);
+			}
             gameSpace.put("STATE", state.toString());
         } catch (InterruptedException e) {
             e.printStackTrace();

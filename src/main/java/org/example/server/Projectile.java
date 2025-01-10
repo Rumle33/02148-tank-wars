@@ -6,7 +6,7 @@ public class Projectile implements GameObject {
 	public float x;
 	public float y;
 	public float rotation;
-	public float velocity = 100.0f; // Adjust for visible speed
+	public float velocity = 250.0f; // Adjust for visible speed
 	public float ttl = 3.0f; // Time to live in seconds
 
 	public Projectile(float x, float y, float rotation) {
@@ -31,5 +31,13 @@ public class Projectile implements GameObject {
 
 	public boolean isAlive() {
 		return this.ttl >= 0;
+	}
+
+	@Override
+	public void serialize(StringBuilder buffer) {
+		buffer.append("Projectile").append(" ")
+				.append(this.x).append(" ")
+				.append(this.y).append(" ")
+				.append(this.rotation).append("\n");
 	}
 }

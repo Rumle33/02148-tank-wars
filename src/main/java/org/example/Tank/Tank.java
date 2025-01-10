@@ -12,8 +12,10 @@ import javafx.stage.Stage;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,6 +29,8 @@ public class Tank extends Application {
 
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
+
+	private List<Circle> projectiles = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -141,6 +145,12 @@ public class Tank extends Application {
 
     private void renderGameState(String gameState) {
         String[] lines = gameState.split("\n");
+
+		for (Circle circle : this.projectiles) {
+			root.getChildren().remove(circle);
+		}
+		this.projectiles.clear();
+
         for (String line : lines) {
             String[] parts = line.split(" ");
             if (parts[0].startsWith("Player")) {
@@ -163,22 +173,11 @@ public class Tank extends Application {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
 
-                javafx.application.Platform.runLater(() -> {
-                    Circle projectile = new Circle(5, Color.RED);
-                    projectile.setTranslateX(x);
-                    projectile.setTranslateY(y);
-                    root.getChildren().add(projectile);
-
-                    // Schedule to remove projectile after a short time
-                    new Thread(() -> {
-                        try {
-                            Thread.sleep(3000); // Match the TTL of the projectile
-                            javafx.application.Platform.runLater(() -> root.getChildren().remove(projectile));
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }).start();
-                });
+				Circle projectile = new Circle(5, Color.RED);
+				projectile.setTranslateX(x);
+				projectile.setTranslateY(y);
+				root.getChildren().add(projectile);
+				this.projectiles.add(projectile);
             }
         }
     }
