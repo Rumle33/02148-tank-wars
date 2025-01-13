@@ -7,8 +7,10 @@ import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import org.example.Maps.Wall;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
@@ -16,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class Tank extends Application {
@@ -24,13 +25,12 @@ public class Tank extends Application {
     private Space lobbySpace;
     private Space gameSpace;
     private String playerName;
-    private final Map<String, Group> tanks = new HashMap<>();
+    private final HashMap<String, Group> tanks = new HashMap<>();
     private Pane root;
-
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
-
-	private List<Circle> projectiles = new ArrayList<>();
+    private List<Circle> projectiles = new ArrayList<>();
+    private List<Wall> mapWalls;
 
     @Override
     public void start(Stage primaryStage) {
@@ -45,11 +45,26 @@ public class Tank extends Application {
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
+            //loaad the map :)
+            loadAndRenderMap();
+
             new Thread(this::joinLobby).start();
 
             setupKeyHandling(scene);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void loadAndRenderMap() {
+        org.example.Maps.Map map = new org.example.Maps.Map();
+        mapWalls = map.getWalls(); // Get list of waals from map
+
+        for (Wall wall : mapWalls) {
+            Line line = new Line(wall.getStartX(), wall.getStartY(), wall.getEndX(), wall.getEndY());
+            line.setStroke(Color.BLACK);
+            line.setStrokeWidth(2);
+            root.getChildren().add(line);
         }
     }
 
@@ -146,10 +161,10 @@ public class Tank extends Application {
     private void renderGameState(String gameState) {
         String[] lines = gameState.split("\n");
 
-		for (Circle circle : this.projectiles) {
-			root.getChildren().remove(circle);
-		}
-		this.projectiles.clear();
+        for (Circle circle : this.projectiles) {
+            root.getChildren().remove(circle);
+        }
+        this.projectiles.clear();
 
         for (String line : lines) {
             String[] parts = line.split(" ");
@@ -173,11 +188,11 @@ public class Tank extends Application {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
 
-				Circle projectile = new Circle(5, Color.RED);
-				projectile.setTranslateX(x);
-				projectile.setTranslateY(y);
-				root.getChildren().add(projectile);
-				this.projectiles.add(projectile);
+                Circle projectile = new Circle(5, Color.RED);
+                projectile.setTranslateX(x);
+                projectile.setTranslateY(y);
+                root.getChildren().add(projectile);
+                this.projectiles.add(projectile);
             }
         }
     }
