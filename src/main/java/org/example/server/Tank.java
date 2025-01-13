@@ -19,8 +19,11 @@ public class Tank implements GameObject {
 
 	public final String name;
 
-	public Tank(String name) {
+	public int score;
+
+	public Tank(String name, int score) {
 		this.name = name;
+		this.score = score;
 	}
 
 	@Override
@@ -65,7 +68,8 @@ public class Tank implements GameObject {
 		buffer.append(this.name).append(" ")
 				.append(this.x).append(" ")
 				.append(this.y).append(" ")
-				.append(this.rotation).append("\n");
+				.append(this.rotation).append("\n")
+				.append(this.score).append(" ");
 	}
 
 	public float aabb_x, aabb_y;

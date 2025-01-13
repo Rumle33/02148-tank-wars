@@ -8,6 +8,7 @@ import org.jspace.Space;
 import java.util.HashMap;
 import java.util.Map;
 
+
 public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
@@ -28,7 +29,7 @@ public class Simulation {
     private void initializeTanks(List<String> players) {
         int i = 0;
         for (String player : players) {
-            Tank tank = new Tank(player);
+            Tank tank = new Tank(player,0);
             tank.x = 200 + (i * 400); // Unique starting positions
             tank.y = 300;
             playerTanks.put(player, tank);
@@ -140,6 +141,17 @@ public class Simulation {
             e.printStackTrace();
         }
     }
+
+    private void updateScoreOfKilledTank(Tank killer, Tank killed) {
+        ScoringSystem.rewardKillerTank(killer);
+        ScoringSystem.penalizeKilledTank(killed);
+    }
+
+    private void updateScoreOfWinnerTank(Tank winner){
+        ScoringSystem.rewardWinnerTank(winner);
+    }
+
+
 
     private void broadcastGameState() {
         try {
