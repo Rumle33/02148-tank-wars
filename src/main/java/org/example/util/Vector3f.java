@@ -6,6 +6,12 @@ public class Vector3f {
 	public float y;
 	public float z;
 
+	public Vector3f() {
+		this.x = 0;
+		this.y = 0;
+		this.z = 0;
+	}
+
 	public Vector3f(Vector3f v) {
 		this.x = v.x;
 		this.y = v.y;
@@ -23,7 +29,5 @@ public class Vector3f {
 		this.y = y;
 		this.z = z;
 	}
-
-	
 
 }

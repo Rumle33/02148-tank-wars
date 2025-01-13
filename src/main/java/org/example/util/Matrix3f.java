@@ -6,6 +6,10 @@ public class Matrix3f {
 	float m10, m11, m12;
 	float m20, m21, m22;
 
+	public Matrix3f() {
+		this.setIdentity();
+	}
+
 	public Matrix3f(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22) {
 		this.m00 = m00;
 		this.m01 = m01;

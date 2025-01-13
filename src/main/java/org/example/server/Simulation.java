@@ -3,6 +3,7 @@ package org.example.server;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.example.util.AABB;
 import org.example.util.QuadTree;
 import org.jspace.Space;
 import java.util.HashMap;
@@ -74,25 +75,34 @@ public class Simulation {
 					qt.insert(object);
 				}
 
-				// do physics
-
-				for (GameObject object : this.dynamicObjects) {
-					
-				}
-
-				// generate quadtree
-
-
-				broadcastGameState();
-				
-				// end of update
-				// ===============================				
 				// swap buffers
 				{
 					List<GameObject> temp = dynamicBuffer;
 					dynamicBuffer = dynamicObjects;
 					dynamicObjects = temp;
 				}
+
+				// do collisions
+				
+				// temporary brute force approximate (AABB based) collision check
+				for (int i = 0; i < this.dynamicBuffer.size(); i++) {
+					GameObject o0 = this.dynamicBuffer.get(i);
+					for (int j = i + 1; j < this.dynamicBuffer.size(); j++) {
+						GameObject o1 = this.dynamicBuffer.get(j);
+						if (AABBCollision.test(o0, o1)) {
+							o0.collide(o1);
+							o1.collide(o0);
+						}
+					}
+				}
+
+				// TODO :: walk quadtree and use for collisions
+
+
+				broadcastGameState();
+				
+				// end of update
+				// ===============================				
 				
 				lastTime = currentTime;
 				

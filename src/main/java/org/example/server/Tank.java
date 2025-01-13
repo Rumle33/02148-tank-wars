@@ -94,4 +94,20 @@ public class Tank implements GameObject {
 	public float getAABBHeight() {
 		return this.aabb_height;
 	}
+
+	@Override
+	public void collide(GameObject object) {
+
+		if (object instanceof Projectile) {
+			System.out.println("Tank hit projectile!");
+			this.isAlive = false;
+		}
+		else if (object instanceof Tank) {
+			System.out.println("Tank hit tank!");
+		}
+		else {
+			System.out.println("Tank hit unknown!");
+		}
+
+	}
 }
