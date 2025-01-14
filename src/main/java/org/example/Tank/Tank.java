@@ -2,7 +2,6 @@ package org.example.Tank;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -10,8 +9,8 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-import org.example.Maps.Wall;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
@@ -31,16 +30,13 @@ public class Tank extends Application {
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
     private List<Circle> projectiles = new ArrayList<>();
-    private List<Wall> mapWalls;
 
     @Override
     public void start(Stage primaryStage) {
         try {
-            // Connect to lobby and game spaces
             lobbySpace = new RemoteSpace("tcp://localhost:12345/lobby?keep");
             gameSpace = new RemoteSpace("tcp://localhost:12345/game?keep");
 
-            // Set up JavaFX root pane
             root = new Pane();
             Scene scene = new Scene(root, 800, 600);
 
@@ -48,25 +44,10 @@ public class Tank extends Application {
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
-            // Render the map and handle lobby joining
-            loadAndRenderMap();
             new Thread(this::joinLobby).start();
-
             setupKeyHandling(scene);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private void loadAndRenderMap() {
-        org.example.Maps.Map map = new org.example.Maps.Map();
-        mapWalls = map.getWalls();
-
-        for (Wall wall : mapWalls) {
-            Line line = new Line(wall.getStartX(), wall.getStartY(), wall.getEndX(), wall.getEndY());
-            line.setStroke(Color.BLACK);
-            line.setStrokeWidth(2);
-            root.getChildren().add(line);
         }
     }
 
@@ -76,11 +57,17 @@ public class Tank extends Application {
             lobbySpace.put("JOIN", playerName);
             lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
 
+            // Request the map explicitly
+            gameSpace.put("REQUEST_MAP", playerName);
+            Object[] mapData = gameSpace.get(new org.jspace.ActualField("MAP"), new org.jspace.FormalField(String.class));
+            renderMap((String) mapData[1]); // Render the map
+
             javafx.application.Platform.runLater(this::startGame);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
+
 
     private void setupKeyHandling(Scene scene) {
         scene.setOnKeyPressed(event -> {
@@ -136,17 +123,12 @@ public class Tank extends Application {
     }
 
     private void startGame() {
-        startGameLoop();
-    }
-
-    private void startGameLoop() {
-        AnimationTimer gameLoop = new AnimationTimer() {
+        new AnimationTimer() {
             @Override
             public void handle(long now) {
                 updateGameState();
             }
-        };
-        gameLoop.start();
+        }.start();
     }
 
     private void updateGameState() {
@@ -163,13 +145,11 @@ public class Tank extends Application {
     private void renderGameState(String gameState) {
         String[] lines = gameState.split("\n");
 
-        // Clear old projectiles
         for (Circle circle : this.projectiles) {
             root.getChildren().remove(circle);
         }
         this.projectiles.clear();
 
-        // Render tanks and projectiles
         for (String line : lines) {
             String[] parts = line.split(" ");
             if (parts[0].startsWith("Player")) {
@@ -179,10 +159,9 @@ public class Tank extends Application {
                 double rotation = Double.parseDouble(parts[3]);
 
                 javafx.application.Platform.runLater(() -> {
-                    System.out.println("Applying rotation for tank: " + playerName + " | Rotation: " + Math.toDegrees(rotation));
-                    ImageView tank = tanks.computeIfAbsent(playerName, playerNameKey -> {
+                    ImageView tank = tanks.computeIfAbsent(playerName, key -> {
                         ImageView newTank = new ImageView(new Image(
-                                playerNameKey.equals(this.playerName)
+                                playerName.equals(this.playerName)
                                         ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
                                         : getClass().getResource("/assets/RedTank.png").toExternalForm()
                         ));
@@ -196,8 +175,6 @@ public class Tank extends Application {
                     tank.setY(y - 20);
                     tank.setRotate(Math.toDegrees(rotation));
                 });
-
-
             } else if (parts[0].equals("Projectile")) {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
@@ -210,6 +187,30 @@ public class Tank extends Application {
             }
         }
     }
+
+    private void renderMap(String mapData) {
+        javafx.application.Platform.runLater(() -> {
+            String[] lines = mapData.split("\n");
+            for (String line : lines) {
+                String[] parts = line.split(" ");
+                if (parts.length != 4) {
+                    continue;
+                }
+
+                double startX = Double.parseDouble(parts[0]);
+                double startY = Double.parseDouble(parts[1]);
+                double endX = Double.parseDouble(parts[2]);
+                double endY = Double.parseDouble(parts[3]);
+
+                Line wall = new Line(startX, startY, endX, endY);
+                wall.setStroke(Color.BLACK);
+                wall.setStrokeWidth(2);
+                root.getChildren().add(wall);
+            }
+            System.out.println("Map rendered successfully.");
+        });
+    }
+
 
     public static void main(String[] args) {
         launch(args);
