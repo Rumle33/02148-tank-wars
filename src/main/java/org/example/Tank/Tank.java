@@ -2,6 +2,7 @@ package org.example.Tank;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
@@ -14,6 +15,7 @@ import org.example.Maps.Wall;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
+import java.awt.Paint;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +33,8 @@ public class Tank extends Application {
     private long lastShotTime = 0;
     private List<Circle> projectiles = new ArrayList<>();
     private List<Wall> mapWalls;
+	private List<Rectangle> quads = new ArrayList<>();
+
 
     @Override
     public void start(Stage primaryStage) {
@@ -164,7 +168,11 @@ public class Tank extends Application {
         for (Circle circle : this.projectiles) {
             root.getChildren().remove(circle);
         }
+		for (Rectangle rectangle : this.quads) {
+			root.getChildren().remove(rectangle);
+		}
         this.projectiles.clear();
+		this.quads.clear();
 
         for (String line : lines) {
             String[] parts = line.split(" ");
@@ -173,6 +181,18 @@ public class Tank extends Application {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
                 double rotation = Double.parseDouble(parts[3]);
+
+				float ax0 = Float.parseFloat(parts[5]);
+				float ay0 = Float.parseFloat(parts[6]);
+				float awidth = Float.parseFloat(parts[7]);
+				float aheight = Float.parseFloat(parts[8]);
+
+				Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+				quad.setFill(null);
+				quad.setStroke(Color.RED);
+				quad.setStrokeWidth(1); 
+				this.quads.add(quad);
+				root.getChildren().add(quad);
 
                 javafx.application.Platform.runLater(() -> {
                     Group tank = tanks.computeIfAbsent(playerName, name -> {

@@ -83,6 +83,7 @@ public class Simulation {
 				}
 
 				// do collisions
+				PhysicsCollision collision = new PhysicsCollision();
 				
 				// temporary brute force approximate (AABB based) collision check
 				for (int i = 0; i < this.dynamicBuffer.size(); i++) {
@@ -90,6 +91,7 @@ public class Simulation {
 					for (int j = i + 1; j < this.dynamicBuffer.size(); j++) {
 						GameObject o1 = this.dynamicBuffer.get(j);
 						if (AABBCollision.test(o0, o1)) {
+							
 							o0.collide(o1);
 							o1.collide(o0);
 						}
