@@ -45,7 +45,6 @@ public class Simulation {
         }
     }
 
-
     private void sendMap() {
         try {
             StringBuilder mapState = new StringBuilder();
