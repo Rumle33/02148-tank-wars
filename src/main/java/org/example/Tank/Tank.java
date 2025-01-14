@@ -4,11 +4,12 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import org.example.Maps.Wall;
 import org.jspace.RemoteSpace;
@@ -25,7 +26,7 @@ public class Tank extends Application {
     private Space lobbySpace;
     private Space gameSpace;
     private String playerName;
-    private final HashMap<String, Group> tanks = new HashMap<>();
+    private final HashMap<String, ImageView> tanks = new HashMap<>();
     private Pane root;
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
@@ -35,9 +36,11 @@ public class Tank extends Application {
     @Override
     public void start(Stage primaryStage) {
         try {
+            // Connect to lobby and game spaces
             lobbySpace = new RemoteSpace("tcp://localhost:12345/lobby?keep");
             gameSpace = new RemoteSpace("tcp://localhost:12345/game?keep");
 
+            // Set up JavaFX root pane
             root = new Pane();
             Scene scene = new Scene(root, 800, 600);
 
@@ -45,9 +48,8 @@ public class Tank extends Application {
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
-            //loaad the map :)
+            // Render the map and handle lobby joining
             loadAndRenderMap();
-
             new Thread(this::joinLobby).start();
 
             setupKeyHandling(scene);
@@ -58,7 +60,7 @@ public class Tank extends Application {
 
     private void loadAndRenderMap() {
         org.example.Maps.Map map = new org.example.Maps.Map();
-        mapWalls = map.getWalls(); // Get list of waals from map
+        mapWalls = map.getWalls();
 
         for (Wall wall : mapWalls) {
             Line line = new Line(wall.getStartX(), wall.getStartY(), wall.getEndX(), wall.getEndY());
@@ -161,11 +163,13 @@ public class Tank extends Application {
     private void renderGameState(String gameState) {
         String[] lines = gameState.split("\n");
 
+        // Clear old projectiles
         for (Circle circle : this.projectiles) {
             root.getChildren().remove(circle);
         }
         this.projectiles.clear();
 
+        // Render tanks and projectiles
         for (String line : lines) {
             String[] parts = line.split(" ");
             if (parts[0].startsWith("Player")) {
@@ -175,15 +179,25 @@ public class Tank extends Application {
                 double rotation = Double.parseDouble(parts[3]);
 
                 javafx.application.Platform.runLater(() -> {
-                    Group tank = tanks.computeIfAbsent(playerName, name -> {
-                        Group newTank = new Group(new Rectangle(40, 40, name.equals(this.playerName) ? Color.GREEN : Color.BLUE));
+                    System.out.println("Applying rotation for tank: " + playerName + " | Rotation: " + Math.toDegrees(rotation));
+                    ImageView tank = tanks.computeIfAbsent(playerName, playerNameKey -> {
+                        ImageView newTank = new ImageView(new Image(
+                                playerNameKey.equals(this.playerName)
+                                        ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
+                                        : getClass().getResource("/assets/RedTank.png").toExternalForm()
+                        ));
+                        newTank.setFitWidth(40);
+                        newTank.setFitHeight(40);
                         root.getChildren().add(newTank);
                         return newTank;
                     });
-                    tank.setTranslateX(x - 20);
-                    tank.setTranslateY(y - 20);
+
+                    tank.setX(x - 20);
+                    tank.setY(y - 20);
                     tank.setRotate(Math.toDegrees(rotation));
                 });
+
+
             } else if (parts[0].equals("Projectile")) {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
