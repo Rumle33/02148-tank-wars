@@ -68,7 +68,7 @@ public class Tank implements GameObject {
 		buffer.append(this.name).append(" ")
 				.append(this.x).append(" ")
 				.append(this.y).append(" ")
-				.append(this.rotation).append("")
+				.append(this.rotation).append(" ")
 				.append(this.score).append("\n");
 	}
 
