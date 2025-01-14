@@ -29,10 +29,6 @@ public class Projectile implements GameObject {
 		return true;
 	}
 
-	public boolean isAlive() {
-		return this.ttl >= 0;
-	}
-
 	@Override
 	public void serialize(StringBuilder buffer) {
 		buffer.append("Projectile").append(" ")
@@ -61,5 +57,22 @@ public class Projectile implements GameObject {
 	@Override
 	public float getAABBHeight() {
 		return Projectile.RADIUS * 2;
+	}
+
+	@Override
+	public void collide(GameObject object) {
+
+		if (object instanceof Tank) {
+			System.out.println("Projectile hit tank!");
+			this.ttl = -1;
+		}
+		else if (object instanceof Projectile) {
+			System.out.println("Projectile hit projectile!");
+			this.ttl = -1;
+		}
+		else {
+			System.out.println("Projectile hit unknown!");
+		}
+
 	}
 }

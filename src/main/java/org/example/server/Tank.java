@@ -3,10 +3,10 @@ package org.example.server;
 import org.example.util.MathUtil;
 
 public class Tank implements GameObject {
-	
+
 	public float x;
 	public float y;
-	public float rotation;
+	public float rotation; // Rotation in radians
 	public float velocity;
 	public float angularVelocity;
 
@@ -19,8 +19,11 @@ public class Tank implements GameObject {
 
 	public final String name;
 
-	public Tank(String name) {
+	public int score;
+
+	public Tank(String name, int score) {
 		this.name = name;
+		this.score = score;
 	}
 
 	@Override
@@ -47,8 +50,7 @@ public class Tank implements GameObject {
 		x += dx;
 		y += dy;
 
-		// update AABB
-
+		// Update AABB
 		final float width = 40.0f;
 		final float height = 40.0f;
 
@@ -65,7 +67,8 @@ public class Tank implements GameObject {
 		buffer.append(this.name).append(" ")
 				.append(this.x).append(" ")
 				.append(this.y).append(" ")
-				.append(this.rotation).append("\n");
+				.append(this.rotation).append(" ")
+				.append(this.score).append("\n");
 	}
 
 	public float aabb_x, aabb_y;
@@ -89,5 +92,17 @@ public class Tank implements GameObject {
 	@Override
 	public float getAABBHeight() {
 		return this.aabb_height;
+	}
+
+	@Override
+	public void collide(GameObject object) {
+		if (object instanceof Projectile) {
+			System.out.println("Tank hit projectile!");
+			this.isAlive = false;
+		} else if (object instanceof Tank) {
+			System.out.println("Tank hit tank!");
+		} else {
+			System.out.println("Tank hit unknown!");
+		}
 	}
 }
