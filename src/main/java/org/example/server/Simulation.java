@@ -38,6 +38,7 @@ public class Simulation {
             while (true) {
                 Object[] request = gameSpace.get(new org.jspace.ActualField("REQUEST_MAP"), new org.jspace.FormalField(String.class));
                 String requestingPlayer = (String) request[1];
+                System.out.println("Sending map to: " + requestingPlayer);
                 sendMap();
             }
         } catch (InterruptedException e) {
@@ -60,7 +61,6 @@ public class Simulation {
         }
     }
 
-
     private void processPlayerActions() {
         try {
             Object[] action;
@@ -74,7 +74,6 @@ public class Simulation {
                 String command = (String) action[2];
                 float value = (Float) action[3];
 
-
                 Tank tank = playerTanks.get(playerName);
                 if (tank != null) {
                     switch (command) {
@@ -83,7 +82,7 @@ public class Simulation {
                         case "SHOOT" -> {
                             Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation);
                             dynamicObjects.add(projectile);
-
+                            System.out.println("Projectile created at (" + tank.x + ", " + tank.y + ")");
                         }
                     }
                 }
@@ -101,8 +100,9 @@ public class Simulation {
                 processPlayerActions();
 
                 dynamicBuffer.clear();
+
                 for (GameObject object : dynamicObjects) {
-                    if (object.update(this, 1.0f / 60.0f)) { //  a 60 FPS
+                    if (object.update(this, 1.0f / 60.0f)) { // Update objects at 60 FPS
                         dynamicBuffer.add(object);
                     }
                 }

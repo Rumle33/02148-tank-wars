@@ -54,8 +54,8 @@ public class Tank implements GameObject {
 		final float width = 40.0f;
 		final float height = 40.0f;
 
-		this.aabb_width = (float)(Math.cos(this.rotation) * width + Math.sin(this.rotation) * height);
-		this.aabb_height = (float)(Math.sin(this.rotation) * width + Math.sin(this.rotation) * height);
+		this.aabb_width = (float)(Math.abs(Math.cos(this.rotation)) * width + Math.abs(Math.sin(this.rotation)) * height);
+		this.aabb_height = (float)(Math.abs(Math.sin(this.rotation)) * width + Math.abs(Math.cos(this.rotation)) * height);
 		this.aabb_x = this.x - this.aabb_width * 0.5f;
 		this.aabb_y = this.y - this.aabb_height * 0.5f;
 
@@ -64,11 +64,17 @@ public class Tank implements GameObject {
 
 	@Override
 	public void serialize(StringBuilder buffer) {
-		buffer.append(this.name).append(" ")
-				.append(this.x).append(" ")
-				.append(this.y).append(" ")
-				.append(this.rotation).append(" ")
-				.append(this.score).append("\n");
+		buffer
+			.append(this.name).append(" ")
+			.append(this.x).append(" ")
+			.append(this.y).append(" ")
+			.append(this.rotation).append(" ")
+			.append(this.score).append(" ")
+			.append(this.getAABBX()).append(" ")
+			.append(this.getAABBY()).append(" ")
+			.append(this.getAABBWidth()).append(" ")
+			.append(this.getAABBHeight()).append(" ")
+			.append("\n");
 	}
 
 	public float aabb_x, aabb_y;

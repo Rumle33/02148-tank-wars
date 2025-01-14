@@ -30,6 +30,7 @@ public class Tank extends Application {
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
     private List<Circle> projectiles = new ArrayList<>();
+    private List<Rectangle> quads = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -57,17 +58,15 @@ public class Tank extends Application {
             lobbySpace.put("JOIN", playerName);
             lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
 
-            // Request the map explicitly
             gameSpace.put("REQUEST_MAP", playerName);
             Object[] mapData = gameSpace.get(new org.jspace.ActualField("MAP"), new org.jspace.FormalField(String.class));
-            renderMap((String) mapData[1]); // Render the map
+            renderMap((String) mapData[1]);
 
             javafx.application.Platform.runLater(this::startGame);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
-
 
     private void setupKeyHandling(Scene scene) {
         scene.setOnKeyPressed(event -> {
@@ -148,7 +147,11 @@ public class Tank extends Application {
         for (Circle circle : this.projectiles) {
             root.getChildren().remove(circle);
         }
+        for (Rectangle rectangle : this.quads) {
+            root.getChildren().remove(rectangle);
+        }
         this.projectiles.clear();
+        this.quads.clear();
 
         for (String line : lines) {
             String[] parts = line.split(" ");
@@ -157,6 +160,18 @@ public class Tank extends Application {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
                 double rotation = Double.parseDouble(parts[3]);
+
+                float ax0 = Float.parseFloat(parts[5]);
+                float ay0 = Float.parseFloat(parts[6]);
+                float awidth = Float.parseFloat(parts[7]);
+                float aheight = Float.parseFloat(parts[8]);
+
+                Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+                quad.setFill(null);
+                quad.setStroke(Color.RED);
+                quad.setStrokeWidth(1);
+                this.quads.add(quad);
+                root.getChildren().add(quad);
 
                 javafx.application.Platform.runLater(() -> {
                     ImageView tank = tanks.computeIfAbsent(playerName, key -> {
@@ -210,7 +225,6 @@ public class Tank extends Application {
             System.out.println("Map rendered successfully.");
         });
     }
-
 
     public static void main(String[] args) {
         launch(args);
