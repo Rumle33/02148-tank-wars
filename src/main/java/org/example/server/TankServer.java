@@ -1,6 +1,8 @@
 package org.example.server;
 
-import org.jspace.*;
+import org.jspace.SequentialSpace;
+import org.jspace.Space;
+import org.jspace.SpaceRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,7 @@ public class TankServer {
 
         try {
             while (connectedPlayers.size() < MAX_PLAYERS) {
-                Object[] playerInfo = lobbySpace.get(new ActualField("JOIN"), new FormalField(String.class));
+                Object[] playerInfo = lobbySpace.get(new org.jspace.ActualField("JOIN"), new org.jspace.FormalField(String.class));
                 String playerName = (String) playerInfo[1];
 
                 if (!connectedPlayers.contains(playerName)) {

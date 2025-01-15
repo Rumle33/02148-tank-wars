@@ -2,7 +2,6 @@ package org.example.Tank;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -10,7 +9,6 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-import org.example.Maps.Wall;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
@@ -30,7 +28,7 @@ public class Tank extends Application {
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
     private List<Circle> projectiles = new ArrayList<>();
-    private List<Wall> mapWalls;
+    private List<Rectangle> quads = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -45,26 +43,10 @@ public class Tank extends Application {
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
-            //loaad the map :)
-            loadAndRenderMap();
-
             new Thread(this::joinLobby).start();
-
             setupKeyHandling(scene);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private void loadAndRenderMap() {
-        org.example.Maps.Map map = new org.example.Maps.Map();
-        mapWalls = map.getWalls(); // Get list of waals from map
-
-        for (Wall wall : mapWalls) {
-            Line line = new Line(wall.getStartX(), wall.getStartY(), wall.getEndX(), wall.getEndY());
-            line.setStroke(Color.BLACK);
-            line.setStrokeWidth(2);
-            root.getChildren().add(line);
         }
     }
 
@@ -73,6 +55,10 @@ public class Tank extends Application {
             playerName = "Player" + (int) (Math.random() * 1000);
             lobbySpace.put("JOIN", playerName);
             lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
+
+            gameSpace.put("REQUEST_MAP", playerName);
+            Object[] mapData = gameSpace.get(new org.jspace.ActualField("MAP"), new org.jspace.FormalField(String.class));
+            renderMap((String) mapData[1]);
 
             javafx.application.Platform.runLater(this::startGame);
         } catch (InterruptedException e) {
@@ -134,17 +120,12 @@ public class Tank extends Application {
     }
 
     private void startGame() {
-        startGameLoop();
-    }
-
-    private void startGameLoop() {
-        AnimationTimer gameLoop = new AnimationTimer() {
+        new AnimationTimer() {
             @Override
             public void handle(long now) {
                 updateGameState();
             }
-        };
-        gameLoop.start();
+        }.start();
     }
 
     private void updateGameState() {
@@ -164,7 +145,11 @@ public class Tank extends Application {
         for (Circle circle : this.projectiles) {
             root.getChildren().remove(circle);
         }
+        for (Rectangle rectangle : this.quads) {
+            root.getChildren().remove(rectangle);
+        }
         this.projectiles.clear();
+        this.quads.clear();
 
         for (String line : lines) {
             String[] parts = line.split(" ");
@@ -174,9 +159,29 @@ public class Tank extends Application {
                 double y = Double.parseDouble(parts[2]);
                 double rotation = Double.parseDouble(parts[3]);
 
+                float ax0 = Float.parseFloat(parts[5]);
+                float ay0 = Float.parseFloat(parts[6]);
+                float awidth = Float.parseFloat(parts[7]);
+                float aheight = Float.parseFloat(parts[8]);
+
+                Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+                quad.setFill(null);
+                quad.setStroke(Color.RED);
+                quad.setStrokeWidth(1);
+                this.quads.add(quad);
+                root.getChildren().add(quad);
+
                 javafx.application.Platform.runLater(() -> {
                     Group tank = tanks.computeIfAbsent(playerName, name -> {
                         Group newTank = new Group(new Rectangle(40, 40, name.equals(this.playerName) ? Color.GREEN : Color.BLUE));
+                    ImageView tank = tanks.computeIfAbsent(playerName, key -> {
+                        ImageView newTank = new ImageView(new Image(
+                                playerName.equals(this.playerName)
+                                        ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
+                                        : getClass().getResource("/assets/RedTank.png").toExternalForm()
+                        ));
+                        newTank.setFitWidth(40);
+                        newTank.setFitHeight(40);
                         root.getChildren().add(newTank);
                         return newTank;
                     });
@@ -195,6 +200,29 @@ public class Tank extends Application {
                 this.projectiles.add(projectile);
             }
         }
+    }
+
+    private void renderMap(String mapData) {
+        javafx.application.Platform.runLater(() -> {
+            String[] lines = mapData.split("\n");
+            for (String line : lines) {
+                String[] parts = line.split(" ");
+                if (parts.length != 4) {
+                    continue;
+                }
+
+                double startX = Double.parseDouble(parts[0]);
+                double startY = Double.parseDouble(parts[1]);
+                double endX = Double.parseDouble(parts[2]);
+                double endY = Double.parseDouble(parts[3]);
+
+                Line wall = new Line(startX, startY, endX, endY);
+                wall.setStroke(Color.BLACK);
+                wall.setStrokeWidth(2);
+                root.getChildren().add(wall);
+            }
+            System.out.println("Map rendered successfully.");
+        });
     }
 
     public static void main(String[] args) {
