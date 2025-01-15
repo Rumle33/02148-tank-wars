@@ -43,6 +43,7 @@ public class LobbyServer {
         }
 
         // Check if exactly two players are ready to start the game
+        // Check if exactly two players are ready to start the game
         if (readyCount == 2) {
             System.out.println("Two players ready. Starting game...");
             for (ClientHandler client : clients) {
