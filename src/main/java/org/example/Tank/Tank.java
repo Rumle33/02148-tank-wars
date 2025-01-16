@@ -3,6 +3,8 @@ package org.example.Tank;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -23,7 +25,7 @@ public class Tank extends Application {
     private Space lobbySpace;
     private Space gameSpace;
     private String playerName;
-    private final HashMap<String, Group> tanks = new HashMap<>();
+    private final HashMap<String, ImageView> tanks = new HashMap<>();
     private Pane root;
     private final Set<String> keysPressed = new HashSet<>();
     private long lastShotTime = 0;
@@ -172,8 +174,6 @@ public class Tank extends Application {
                 root.getChildren().add(quad);
 
                 javafx.application.Platform.runLater(() -> {
-                    Group tank = tanks.computeIfAbsent(playerName, name -> {
-                        Group newTank = new Group(new Rectangle(40, 40, name.equals(this.playerName) ? Color.GREEN : Color.BLUE));
                     ImageView tank = tanks.computeIfAbsent(playerName, key -> {
                         ImageView newTank = new ImageView(new Image(
                                 playerName.equals(this.playerName)
@@ -185,8 +185,9 @@ public class Tank extends Application {
                         root.getChildren().add(newTank);
                         return newTank;
                     });
-                    tank.setTranslateX(x - 20);
-                    tank.setTranslateY(y - 20);
+
+                    tank.setX(x - 20);
+                    tank.setY(y - 20);
                     tank.setRotate(Math.toDegrees(rotation));
                 });
             } else if (parts[0].equals("Projectile")) {

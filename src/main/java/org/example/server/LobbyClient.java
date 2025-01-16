@@ -6,22 +6,20 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import org.example.Tank.Main;
+import org.jspace.*;
 import javafx.geometry.Insets;
 
-import java.io.*;
-import java.net.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 public class LobbyClient extends Application {
-    private static final String SERVER_ADDRESS = "localhost";
-    private static final int SERVER_PORT = 12345;
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
+    private static final String SERVER_URI = "tcp://localhost:9001/lobby?keep";
+    private RemoteSpace lobbySpace;
     private ListView<String> playerListView = new ListView<>();
     private boolean ready = false;
     private Button readyButton = new Button("Not Ready");
-    private String playerName; // Local variable for player name
+    private String playerName;
+    private ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
     public void start(Stage primaryStage) {
@@ -49,10 +47,10 @@ public class LobbyClient extends Application {
         joinButton.setOnAction(e -> {
             String name = nameField.getText().trim();
             if (!name.isEmpty()) {
-                playerName = name; // Set player name
-                root.getChildren().clear(); // Clear initial UI
+                playerName = name;
+                root.getChildren().clear();
                 root.getChildren().addAll(lobbyLabel, playerListView, readyButton);
-                readyButton.setDisable(false); // Enable ready button
+                readyButton.setDisable(false);
                 connectToServer();
             } else {
                 nameLabel.setText("Player name cannot be empty!");
@@ -62,57 +60,61 @@ public class LobbyClient extends Application {
 
     private void connectToServer() {
         try {
-            socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            out.println(playerName); // Send the player name to the server
-
-            new Thread(this::listenForUpdates).start();
-        } catch (IOException e) {
+            lobbySpace = new RemoteSpace(SERVER_URI);
+            lobbySpace.put(playerName, "JOIN");
+            listenForUpdates();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     private void listenForUpdates() {
-        try {
-            String message;
-            while ((message = in.readLine()) != null) {
-                System.out.println("Received message: " + message); // Debugging line
-                if (message.equals("START")) {
-                    System.out.println("Game starting...");
-                    Main.main(new String[]{}); // Launch the main game
-                    break;
-                } else if (message.startsWith("UPDATE")) {
-                    updatePlayerList(message);
+        executor.submit(() -> {
+            try {
+                while (true) {
+                    Object[] update = lobbySpace.get(new FormalField(String.class), new FormalField(String.class));
+                    String type = (String) update[0];
+                    String message = (String) update[1];
+
+                    if (type.equals("UPDATE")) {
+                        System.out.println("Received player list update: " + message); // Debug
+                        updatePlayerList(message);
+                    } else if (type.equals("START_GAME") && message.equals("ALL")) {
+                        Platform.runLater(() -> {
+                            System.out.println("Game starting...");
+                            // Transition to game scene
+                        });
+                        break;
+                    }
                 }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    private void updatePlayerList(String message) {
-        System.out.println("Received update: " + message); // Debugging line
-        String[] lines = message.split("\\n");
-        Platform.runLater(() -> {
-            playerListView.getItems().clear();
-            for (int i = 1; i < lines.length; i++) { // Start from 1 to skip "UPDATE"
-                playerListView.getItems().add(lines[i]);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         });
     }
 
+    private void updatePlayerList(String message) {
+        Platform.runLater(() -> {
+            playerListView.getItems().clear();
+            if (!message.isEmpty()) {
+                String[] players = message.split(",");
+                playerListView.getItems().addAll(players);
+            }
+        });
+    }
 
     private void toggleReadyStatus() {
-        ready = !ready;
-        readyButton.setText(ready ? "Ready" : "Not Ready");
-        readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
-        out.println("READY");
+        try {
+            ready = !ready;
+            readyButton.setText(ready ? "Ready" : "Not Ready");
+            readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
+            lobbySpace.put(playerName, ready ? "READY" : "NOT_READY");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
-        launch(args); // Launch the JavaFX application
+        launch(args);
     }
 }
