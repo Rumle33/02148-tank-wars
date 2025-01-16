@@ -63,7 +63,7 @@ public class TankServer {
         repository.add("lobby", lobbySpace);
         repository.add("game", gameSpace);
 
-        repository.addGate("tcp://localhost:12345/?keep");
-        System.out.println("Server is running on localhost:12345...");
+        repository.addGate("tcp://localhost:9001/?keep");
+        System.out.println("Server is running on localhost:9001");
     }
 }
