@@ -1,26 +1,25 @@
 package org.example.server;
 
+import org.example.Maps.Wall;
 import org.example.util.AABB;
 
 public class AABBCollision {
-	
-	public static boolean test(AABB c0, AABB c1) {
-		float c0x0 = c0.getAABBX();
-		float c0y0 = c0.getAABBY();
-		float c0x1 = c0x0 + c0.getAABBWidth();
-		float c0y1 = c0y0 + c0.getAABBHeight();
 
-		float c1x0 = c1.getAABBX();
-		float c1y0 = c1.getAABBY();
-		float c1x1 = c1x0 + c1.getAABBWidth();
-		float c1y1 = c1y0 + c1.getAABBHeight();
+	public static boolean test(GameObject obj, Wall wall) {
+		float objX0 = obj.getAABBX();
+		float objY0 = obj.getAABBY();
+		float objX1 = objX0 + obj.getAABBWidth();
+		float objY1 = objY0 + obj.getAABBHeight();
 
-		if ((c1x0 > c0x0 && c1x0 < c0x1) || (c1x1 > c0x0 && c1x1 < c0x1)) {
-			if ((c1y0 > c0y0 && c1y0 < c0y1) || (c1y1 > c0y0 && c1y1 < c0y0)) {
-				return true;
-			}
-		}
+		float wallX0 = (float) Math.min(wall.getStartX(), wall.getEndX());
+		float wallY0 = (float) Math.min(wall.getStartY(), wall.getEndY());
+		float wallX1 = (float) Math.max(wall.getStartX(), wall.getEndX());
+		float wallY1 = (float) Math.max(wall.getStartY(), wall.getEndY());
 
-		return false;
+		// Return true if there's any overlap between the AABB and the wall
+		return objX1 > wallX0 && objX0 < wallX1 && objY1 > wallY0 && objY0 < wallY1;
 	}
+
+
+
 }

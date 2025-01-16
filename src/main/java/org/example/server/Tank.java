@@ -17,6 +17,7 @@ public class Tank implements GameObject {
 	public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
 	public boolean isAlive = true;
 
+
 	public final String name;
 
 	public int score;
@@ -33,34 +34,40 @@ public class Tank implements GameObject {
 		// Gradual stop when no acceleration
 		if (acceleration == 0) {
 			velocity *= 0.9f; // Apply friction
-			if (Math.abs(velocity) < 0.01f) velocity = 0; // Snap to zero
+			if (Math.abs(velocity) < 0.01f) velocity = 0; // Snap to zero if very slow
 		}
 		if (angularAcceleration == 0) {
 			angularVelocity *= 0.9f;
-			if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0;
+			if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0; // Snap to zero
 		}
 
-		// Update velocity and position
-		velocity = MathUtil.clamp(velocity + acceleration * delta, -maxVelocity, maxVelocity);
-		angularVelocity = MathUtil.clamp(angularVelocity + angularAcceleration * delta, -maxAngularVelocity, maxAngularVelocity);
+		// Update velocity
+		velocity += acceleration * delta;
+		angularVelocity += angularAcceleration * delta;
+
+		// Allow free rotation
 		rotation += angularVelocity * delta;
 
+		// Calculate movement
 		float dx = (float) (velocity * Math.cos(rotation) * delta);
 		float dy = (float) (velocity * Math.sin(rotation) * delta);
+
+		// Apply movement
 		x += dx;
 		y += dy;
 
-		// Update AABB
-		final float width = 40.0f;
-		final float height = 40.0f;
-
-		this.aabb_width = (float)(Math.abs(Math.cos(this.rotation)) * width + Math.abs(Math.sin(this.rotation)) * height);
-		this.aabb_height = (float)(Math.abs(Math.sin(this.rotation)) * width + Math.abs(Math.cos(this.rotation)) * height);
-		this.aabb_x = this.x - this.aabb_width * 0.5f;
-		this.aabb_y = this.y - this.aabb_height * 0.5f;
+		// Check for collisions
+		if (simulation.handleTankWallCollision(this, dx, dy)) {
+			// Undo position updates if there was a collision
+			x -= dx;
+			y -= dy;
+		}
 
 		return true;
 	}
+
+
+
 
 	@Override
 	public void serialize(StringBuilder buffer) {
@@ -77,28 +84,32 @@ public class Tank implements GameObject {
 			.append("\n");
 	}
 
-	public float aabb_x, aabb_y;
-	public float aabb_width, aabb_height;
+
+	private final float AABB_WIDTH = 10.0f;  // Red square width (matches the tank's size)
+	private final float AABB_HEIGHT = 10.0f; // Red square height (matches the tank's size)
 
 	@Override
 	public float getAABBX() {
-		return this.aabb_x;
+		return this.x - (AABB_WIDTH / 2); // Center the AABB horizontally
 	}
 
 	@Override
 	public float getAABBY() {
-		return this.aabb_y;
+		return this.y - (AABB_HEIGHT / 2); // Center the AABB vertically
 	}
 
 	@Override
 	public float getAABBWidth() {
-		return this.aabb_width;
+		return AABB_WIDTH;
 	}
 
 	@Override
 	public float getAABBHeight() {
-		return this.aabb_height;
+		return AABB_HEIGHT;
 	}
+
+
+
 
 	@Override
 	public void collide(GameObject object) {

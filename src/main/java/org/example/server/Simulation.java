@@ -2,16 +2,15 @@ package org.example.server;
 
 import org.example.Maps.Wall;
 import org.jspace.Space;
-
+import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
-    private List<Wall> mapWalls;
+    private final List<Wall> mapWalls;
     private List<GameObject> dynamicObjects = new ArrayList<>();
     private List<GameObject> dynamicBuffer = new ArrayList<>();
 
@@ -92,6 +91,58 @@ public class Simulation {
         }
     }
 
+    public boolean handleTankWallCollision(Tank tank, float dx, float dy) {
+        for (Wall wall : mapWalls) {
+            if (AABBCollision.test(tank, wall)) {
+                // Stop velocity and undo movement
+                tank.velocity = 0;
+                tank.x -= dx; // Undo horizontal movement
+                tank.y -= dy; // Undo vertical movement
+
+                // Log for debugging
+                System.out.println("Collision detected! Tank stopped at: (" + tank.x + ", " + tank.y + ")");
+                return true; // Collision occurred
+            }
+        }
+        return false; // No collision
+    }
+
+
+
+    private void handleProjectileWallCollision(Projectile projectile) {
+        for (Wall wall : mapWalls) {
+            if (AABBCollision.test(projectile, wall)) {
+                // Detect if the collision is near a corner
+                boolean nearCornerX = Math.abs(projectile.x - wall.getStartX()) < 1.0f || Math.abs(projectile.x - wall.getEndX()) < 1.0f;
+                boolean nearCornerY = Math.abs(projectile.y - wall.getStartY()) < 1.0f || Math.abs(projectile.y - wall.getEndY()) < 1.0f;
+
+                if (nearCornerX && nearCornerY) {
+                    // If near a corner, reverse both X and Y directions
+                    projectile.rotation = (float) (projectile.rotation + Math.PI);
+                } else {
+                    // Handle standard horizontal/vertical collisions
+                    boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
+
+                    if (isHorizontal) {
+                        projectile.rotation = (float) (-projectile.rotation);
+                    } else {
+                        projectile.rotation = (float) (Math.PI - projectile.rotation);
+                    }
+                }
+
+                // Adjust the projectile's position slightly to avoid re-collision
+                float adjustment = 2.0f;
+                projectile.x += (float) (Math.cos(projectile.rotation) * adjustment);
+                projectile.y += (float) (Math.sin(projectile.rotation) * adjustment);
+
+                return; // Exit after handling the collision
+            }
+        }
+    }
+
+
+
+
     public void run() {
         new Thread(this::handleMapRequests).start();
 
@@ -102,10 +153,21 @@ public class Simulation {
                 dynamicBuffer.clear();
 
                 for (GameObject object : dynamicObjects) {
-                    if (object.update(this, 1.0f / 60.0f)) { // Update objects at 60 FPS
+                    if (object.update(this, 1.0f / 60.0f)) {
+                        if (object instanceof Tank tank) {
+                            // Calculate dx and dy based on the tank's movement
+                            float dx = (float) (tank.velocity * Math.cos(tank.rotation) * (1.0f / 60.0f));
+                            float dy = (float) (tank.velocity * Math.sin(tank.rotation) * (1.0f / 60.0f));
+
+                            // Pass the dx and dy values along with the tank to handleTankWallCollision
+                            handleTankWallCollision(tank, dx, dy);
+                        } else if (object instanceof Projectile) {
+                            handleProjectileWallCollision((Projectile) object);
+                        }
                         dynamicBuffer.add(object);
                     }
                 }
+
 
                 // Swap buffers
                 List<GameObject> temp = dynamicBuffer;
