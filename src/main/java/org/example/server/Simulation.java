@@ -31,6 +31,19 @@ public class Simulation {
             i++;
         }
     }
+    public List<Wall> getMapWalls() {
+    return mapWalls;
+}
+
+
+    public List<Tank> getTanks() {
+        return new ArrayList<>(playerTanks.values());
+    }
+public void showMessage(String message) {
+    System.out.println(message); // Placeholder for actual UI messaging
+}
+
+    
 
     public void handleMapRequests() {
         try {
@@ -79,7 +92,7 @@ public class Simulation {
                         case "MOVE" -> tank.acceleration = value * tank.maxVelocity;
                         case "ROTATE" -> tank.angularAcceleration = value * tank.maxAngularVelocity;
                         case "SHOOT" -> {
-                            Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation);
+                            Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation, tank, this);
                             dynamicObjects.add(projectile);
                             System.out.println("Projectile created at (" + tank.x + ", " + tank.y + ")");
                         }
@@ -94,54 +107,14 @@ public class Simulation {
     public boolean handleTankWallCollision(Tank tank, float dx, float dy) {
         for (Wall wall : mapWalls) {
             if (AABBCollision.test(tank, wall)) {
-                // Stop velocity and undo movement
                 tank.velocity = 0;
-                tank.x -= dx; // Undo horizontal movement
-                tank.y -= dy; // Undo vertical movement
-
-                // Log for debugging
-                System.out.println("Collision detected! Tank stopped at: (" + tank.x + ", " + tank.y + ")");
-                return true; // Collision occurred
+                tank.x -= dx;
+                tank.y -= dy;
+                return true;
             }
         }
-        return false; // No collision
+        return false;
     }
-
-
-
-    private void handleProjectileWallCollision(Projectile projectile) {
-        for (Wall wall : mapWalls) {
-            if (AABBCollision.test(projectile, wall)) {
-                // Detect if the collision is near a corner
-                boolean nearCornerX = Math.abs(projectile.x - wall.getStartX()) < 1.0f || Math.abs(projectile.x - wall.getEndX()) < 1.0f;
-                boolean nearCornerY = Math.abs(projectile.y - wall.getStartY()) < 1.0f || Math.abs(projectile.y - wall.getEndY()) < 1.0f;
-
-                if (nearCornerX && nearCornerY) {
-                    // If near a corner, reverse both X and Y directions
-                    projectile.rotation = (float) (projectile.rotation + Math.PI);
-                } else {
-                    // Handle standard horizontal/vertical collisions
-                    boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
-
-                    if (isHorizontal) {
-                        projectile.rotation = (float) (-projectile.rotation);
-                    } else {
-                        projectile.rotation = (float) (Math.PI - projectile.rotation);
-                    }
-                }
-
-                // Adjust the projectile's position slightly to avoid re-collision
-                float adjustment = 2.0f;
-                projectile.x += (float) (Math.cos(projectile.rotation) * adjustment);
-                projectile.y += (float) (Math.sin(projectile.rotation) * adjustment);
-
-                return; // Exit after handling the collision
-            }
-        }
-    }
-
-
-
 
     public void run() {
         new Thread(this::handleMapRequests).start();
@@ -154,22 +127,10 @@ public class Simulation {
 
                 for (GameObject object : dynamicObjects) {
                     if (object.update(this, 1.0f / 60.0f)) {
-                        if (object instanceof Tank tank) {
-                            // Calculate dx and dy based on the tank's movement
-                            float dx = (float) (tank.velocity * Math.cos(tank.rotation) * (1.0f / 60.0f));
-                            float dy = (float) (tank.velocity * Math.sin(tank.rotation) * (1.0f / 60.0f));
-
-                            // Pass the dx and dy values along with the tank to handleTankWallCollision
-                            handleTankWallCollision(tank, dx, dy);
-                        } else if (object instanceof Projectile) {
-                            handleProjectileWallCollision((Projectile) object);
-                        }
                         dynamicBuffer.add(object);
                     }
                 }
 
-
-                // Swap buffers
                 List<GameObject> temp = dynamicBuffer;
                 dynamicBuffer = dynamicObjects;
                 dynamicObjects = temp;
