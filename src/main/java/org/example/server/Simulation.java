@@ -2,16 +2,15 @@ package org.example.server;
 
 import org.example.Maps.Wall;
 import org.jspace.Space;
-
+import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
-    private List<Wall> mapWalls;
+    private final List<Wall> mapWalls;
     private List<GameObject> dynamicObjects = new ArrayList<>();
     private List<GameObject> dynamicBuffer = new ArrayList<>();
 
@@ -32,6 +31,19 @@ public class Simulation {
             i++;
         }
     }
+    public List<Wall> getMapWalls() {
+    return mapWalls;
+}
+
+
+    public List<Tank> getTanks() {
+        return new ArrayList<>(playerTanks.values());
+    }
+public void showMessage(String message) {
+    System.out.println(message); // Placeholder for actual UI messaging
+}
+
+    
 
     public void handleMapRequests() {
         try {
@@ -80,7 +92,7 @@ public class Simulation {
                         case "MOVE" -> tank.acceleration = value * tank.maxVelocity;
                         case "ROTATE" -> tank.angularAcceleration = value * tank.maxAngularVelocity;
                         case "SHOOT" -> {
-                            Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation);
+                            Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation, tank, this);
                             dynamicObjects.add(projectile);
                             System.out.println("Projectile created at (" + tank.x + ", " + tank.y + ")");
                         }
@@ -90,6 +102,18 @@ public class Simulation {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean handleTankWallCollision(Tank tank, float dx, float dy) {
+        for (Wall wall : mapWalls) {
+            if (AABBCollision.test(tank, wall)) {
+                tank.velocity = 0;
+                tank.x -= dx;
+                tank.y -= dy;
+                return true;
+            }
+        }
+        return false;
     }
 
     public void run() {
@@ -102,12 +126,11 @@ public class Simulation {
                 dynamicBuffer.clear();
 
                 for (GameObject object : dynamicObjects) {
-                    if (object.update(this, 1.0f / 60.0f)) { // Update objects at 60 FPS
+                    if (object.update(this, 1.0f / 60.0f)) {
                         dynamicBuffer.add(object);
                     }
                 }
 
-                // Swap buffers
                 List<GameObject> temp = dynamicBuffer;
                 dynamicBuffer = dynamicObjects;
                 dynamicObjects = temp;

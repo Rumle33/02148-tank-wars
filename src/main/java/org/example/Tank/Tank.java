@@ -180,8 +180,8 @@ public class Tank extends Application {
                                         ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
                                         : getClass().getResource("/assets/RedTank.png").toExternalForm()
                         ));
-                        newTank.setFitWidth(40);
-                        newTank.setFitHeight(40);
+                        newTank.setFitWidth(25);
+                        newTank.setFitHeight(25);
                         root.getChildren().add(newTank);
                         return newTank;
                     });

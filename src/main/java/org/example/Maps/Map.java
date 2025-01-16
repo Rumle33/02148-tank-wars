@@ -19,18 +19,20 @@ public class Map {
     private void initializeWalls() {
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
-                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, i * CELL_SIZE));
-                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, j * CELL_SIZE, (i + 1) * CELL_SIZE));
+                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, i * CELL_SIZE)); // Top wall
+                walls.add(new Wall(j * CELL_SIZE, i * CELL_SIZE, j * CELL_SIZE, (i + 1) * CELL_SIZE)); // Left wall
 
                 if (i == GRID_SIZE - 1) {
-                    walls.add(new Wall(j * CELL_SIZE, (i + 1) * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE));
+                    walls.add(new Wall(j * CELL_SIZE, (i + 1) * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE)); // Bottom wall
                 }
                 if (j == GRID_SIZE - 1) {
-                    walls.add(new Wall((j + 1) * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE));
+                    walls.add(new Wall((j + 1) * CELL_SIZE, i * CELL_SIZE, (j + 1) * CELL_SIZE, (i + 1) * CELL_SIZE)); // Right wall
                 }
             }
         }
     }
+
+
 
     private void ensureTwoWallsRemovedPerCell() {
         for (int i = 0; i < GRID_SIZE; i++) {
@@ -70,10 +72,15 @@ public class Map {
 
     private Wall findWall(double startX, double startY, double endX, double endY) {
         return walls.stream()
-                .filter(wall -> wall.matches(startX, startY, endX, endY))
+                .filter(wall ->
+                        wall.getStartX() == startX &&
+                                wall.getStartY() == startY &&
+                                wall.getEndX() == endX &&
+                                wall.getEndY() == endY)
                 .findFirst()
                 .orElse(null);
     }
+
 
     public List<Wall> getWalls() {
         return walls;
