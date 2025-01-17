@@ -15,10 +15,10 @@ public class Main {
             // Prepare the game space for the TankServer
             Space gameSpace = new SequentialSpace();
 
-            // Start the TankServer after receiving the START_GAME signal
+            // Start the TankServer; it waits for the START_GAME signal from the LobbyServer
             TankServer server = new TankServer(gameSpace);
             System.out.println("Waiting for the game to start...");
-            server.start(); // TankServer waits for the START_GAME signal from the LobbyServer
+            server.start();
         } catch (Exception e) {
             System.err.println("Error in Main: " + e.getMessage());
             e.printStackTrace();

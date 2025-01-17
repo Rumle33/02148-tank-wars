@@ -28,12 +28,16 @@ public class TankServer {
     }
 
     public void start() {
-        System.out.println("Waiting for START_GAME signal...");
+        System.out.println("Waiting for START_GAME signal for the server...");
 
         try {
-            // Listen for the START_GAME signal from the LobbyServer
-            Object[] startSignal = lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.FormalField(String.class));
-            System.out.println("Received START_GAME signal: " + startSignal[1]);
+            // Listen specifically for ("START_GAME", "SERVER")
+            Object[] startSignal = lobbySpace.get(
+                    new org.jspace.ActualField("START_GAME"),
+                    new org.jspace.ActualField("SERVER")
+            );
+            // Once we get that tuple, we know it's time to start the game
+            System.out.println("TankServer received START_GAME signal for: " + startSignal[1]);
 
             // Start the game loop once the signal is received
             startGameLoop();
