@@ -1,6 +1,7 @@
 package org.example.server;
 
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -8,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 public class WelcomeScreen extends Application {
 
@@ -18,6 +20,17 @@ public class WelcomeScreen extends Application {
         primaryStage.setTitle("Welcome Screen");
         primaryStage.setScene(createWelcomeScene(primaryStage));
         primaryStage.show();
+
+		primaryStage.getScene().getWindow().setOnCloseRequest(
+			new EventHandler<WindowEvent>() {
+
+				@Override
+				public void handle(WindowEvent event) {
+					System.exit(0);
+				}
+				
+			}
+		);
     }
 
     public Scene createWelcomeScene(Stage primaryStage) {
