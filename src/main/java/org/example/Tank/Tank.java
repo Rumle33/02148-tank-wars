@@ -31,28 +31,33 @@ public class Tank extends Application {
     private long lastShotTime = 0;
     private List<Circle> projectiles = new ArrayList<>();
     private List<Rectangle> quads = new ArrayList<>();
+    private Scene scene;
 
     @Override
     public void start(Stage primaryStage) {
         try {
-            lobbySpace = new RemoteSpace("tcp://localhost:12345/lobby?keep");
-            gameSpace = new RemoteSpace("tcp://localhost:12345/game?keep");
+            if (lobbySpace == null || gameSpace == null || root == null) {
+                throw new IllegalStateException("Spaces and root must be initialized before starting the game.");
+            }
 
-            root = new Pane();
+
             Scene scene = new Scene(root, 800, 600);
+            this.scene = scene;
 
             primaryStage.setScene(scene);
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
+
             new Thread(this::joinLobby).start();
             setupKeyHandling(scene);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void joinLobby() {
+    public void joinLobby() {
         try {
             playerName = "Player" + (int) (Math.random() * 1000);
             lobbySpace.put("JOIN", playerName);
@@ -68,7 +73,7 @@ public class Tank extends Application {
         }
     }
 
-    private void setupKeyHandling(Scene scene) {
+    public void setupKeyHandling(Scene scene) {
         scene.setOnKeyPressed(event -> {
             keysPressed.add(event.getCode().toString());
             if (event.getCode().toString().equals("SPACE")) {
@@ -180,8 +185,8 @@ public class Tank extends Application {
                                         ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
                                         : getClass().getResource("/assets/RedTank.png").toExternalForm()
                         ));
-                        newTank.setFitWidth(40);
-                        newTank.setFitHeight(40);
+                        newTank.setFitWidth(25);
+                        newTank.setFitHeight(25);
                         root.getChildren().add(newTank);
                         return newTank;
                     });
@@ -228,5 +233,21 @@ public class Tank extends Application {
 
     public static void main(String[] args) {
         launch(args);
+    }
+
+    public void setRoot(Pane root) {
+        this.root = root;
+    }
+
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
+
+    public void setLobbySpace(Space lobbySpace) {
+        this.lobbySpace = lobbySpace;
+    }
+
+    public void setGameSpace(Space gameSpace) {
+        this.gameSpace = gameSpace;
     }
 }

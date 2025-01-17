@@ -3,6 +3,7 @@ package org.example.Tank;
 import javafx.application.Application;
 import org.example.Maps.Map;
 import org.example.server.Simulation;
+import org.example.server.WelcomeScreen;
 
 public class Main {
     public static void main(String[] args) {
@@ -10,6 +11,6 @@ public class Main {
 		// simulation.setDaemon(true);
 		// simulation.start();
 
-        Application.launch(Tank.class, args);
+        Application.launch(WelcomeScreen.class, args);
     }
 }

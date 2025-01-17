@@ -52,6 +52,7 @@ public class TankServer {
         simulation.run();
     }
 
+    /*
     public static void main(String[] args) throws Exception {
         Space lobbySpace = new SequentialSpace();
         Space gameSpace = new SequentialSpace();
@@ -66,4 +67,6 @@ public class TankServer {
         repository.addGate("tcp://localhost:12345/?keep");
         System.out.println("Server is running on localhost:12345...");
     }
+
+     */
 }
