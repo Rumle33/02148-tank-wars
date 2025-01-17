@@ -1,9 +1,12 @@
 package org.example.server;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 public class WelcomeScreen extends Application {
@@ -27,15 +30,19 @@ public class WelcomeScreen extends Application {
         hostButton.setPrefWidth(300);
         joinButton.setPrefWidth(300);
 
-
         String buttonStyle = "-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white; " +
                 "-fx-background-color: linear-gradient(to bottom, #3c8dbc, #357ca5); " +
                 "-fx-border-radius: 8px; -fx-background-radius: 8px;";
+
         hostButton.setStyle(buttonStyle);
         joinButton.setStyle(buttonStyle);
 
+        Label label = new Label("Tank Wars");
+        label.setStyle("-fx-text-fill: white;");
+        label.setFont(Font.font("Monospaced", 80));
+        VBox.setMargin(label, new Insets(0, 0, 40, 0));
 
-        root.getChildren().addAll(hostButton, joinButton);
+        root.getChildren().addAll(label, hostButton, joinButton);
 
 
         hostButton.setOnAction(e -> {
