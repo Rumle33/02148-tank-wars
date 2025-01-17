@@ -3,8 +3,8 @@ package org.example.server;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.example.util.AABB;
 import org.example.util.QuadTree;
+import org.example.util.Vector2f;
 import org.jspace.Space;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +14,7 @@ public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
 
-	public static final int UPS = 50;
+	public static final int UPS = 60;
 	public static final int MILLI_WAIT = 1000 / UPS;
 
 	private List<GameObject> dynamicObjects = new ArrayList<>();
@@ -31,12 +31,12 @@ public class Simulation {
         int i = 0;
         for (String player : players) {
             Tank tank = new Tank(player,0);
-            tank.x = 200 + (i * 400); // Unique starting positions
-            tank.y = 300;
+            // Unique starting positions
+			tank.setX(200 + (i * 400)).setY(300);
             playerTanks.put(player, tank);
 			this.dynamicObjects.add(tank);
             i++;
-            System.out.println("Initialized tank for " + player + " at x=" + tank.x + ", y=" + tank.y);
+            System.out.println("Initialized tank for " + player + " at x=" + tank.getX() + ", y=" + tank.getY());
         }
     }
 
@@ -83,23 +83,27 @@ public class Simulation {
 				}
 
 				// do collisions
-				PhysicsCollision collision = new PhysicsCollision();
 				
+				// TODO :: rework AABB to encompas past + present
+				// TODO :: walk quadtree and use for collisions
 				// temporary brute force approximate (AABB based) collision check
 				for (int i = 0; i < this.dynamicBuffer.size(); i++) {
 					GameObject o0 = this.dynamicBuffer.get(i);
 					for (int j = i + 1; j < this.dynamicBuffer.size(); j++) {
 						GameObject o1 = this.dynamicBuffer.get(j);
 						if (AABBCollision.test(o0, o1)) {
-							
-							o0.collide(o1);
-							o1.collide(o0);
+							if (PhysicsCollision.test(o0.getPhysicsComponent(), o1.getPhysicsComponent())) {
+								o0.collide(o1);
+								o1.collide(o0);
+							}
 						}
 					}
 				}
 
-				// TODO :: walk quadtree and use for collisions
-
+				// do phsics update
+				for (GameObject object: this.dynamicBuffer) {
+					object.getPhysicsComponent().update();
+				}
 
 				broadcastGameState();
 				
@@ -110,8 +114,8 @@ public class Simulation {
 				
 				
 				updates++;
-				if (updates % 50 == 0) {
-					System.out.println("Time delta goal diff: " + ((float)(lastTime - lastSecond - 1000) / 50.0f) + " ms");
+				if (updates % UPS == 0) {
+					// System.out.println("Time delta goal diff: " + ((float)(lastTime - lastSecond - 1000) / (float)UPS) + " ms");
 					lastSecond = lastTime;
 				}
 			}
@@ -141,10 +145,13 @@ public class Simulation {
                         case "ROTATE" -> tank.angularAcceleration = value * tank.maxAngularVelocity;
                         case "SHOOT" -> {
                             // Create a new projectile at the tank's current position and direction
-                            Projectile projectile = new Projectile(tank.x, tank.y, tank.rotation);
+							Vector2f v = new Vector2f(Tank.TANK_HEIGHT * 0.5f + Projectile.PROJECTILE_RADIUS, 0)
+								.rotate(tank.getRotation())
+								.add(tank.getX(), tank.getY());
+                            Projectile projectile = new Projectile(v.x, v.y, tank.getRotation());
                             // projectiles.add(projectile);
 							this.dynamicObjects.add(projectile);
-                            System.out.println("Projectile fired by " + playerName + " at x=" + tank.x + ", y=" + tank.y);
+                            System.out.println("Projectile fired by " + playerName + " at x=" + tank.getX() + ", y=" + tank.getY());
                         }
                     }
                 }

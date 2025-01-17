@@ -3,108 +3,108 @@ package org.example.server;
 import org.example.util.Vector2f;
 
 public class PhysicsCollision {
-	
-	Vector2f s0 = new Vector2f();
-	Vector2f s1 = new Vector2f();
-	Vector2f s2 = new Vector2f();
 
-	public PhysicsCollision() {
+	public static boolean test(PhysicsComponent c0, PhysicsComponent c1) {
+		float[] c0d = c0.getDeltaMesh();
+		float[] c1d = c1.getDeltaMesh();
 
-	}
-
-	public boolean test(PhysicsComponent c0, PhysicsComponent c1) {
-		Vector2f dir = new Vector2f(1, 0);
-
-		{
-			Vector2f t0 = c0.support(c0.dmesh, dir.x, dir.y);
-			Vector2f t1 = c1.support(c1.dmesh, -dir.x, -dir.y);
-
-			s0.set(t0.x - t1.x, t0.y - t1.y);
-		}
-		{
-			dir.set(0 - s0.x, 0 - s0.y);
-
-			Vector2f t0 = c0.support(c0.dmesh, dir.x, dir.y);
-			Vector2f t1 = c1.support(c1.dmesh, -dir.x, -dir.y);
-
-			s1.set(t0.x - t1.x, t0.y - t1.y);
-		}
-
-		// loop
-
-		// project 0,0 onto line formed by s0 and s1
-		// set direction to projected point to 0,0
-		// check if 0,0 in triangle
-		// if not, remove furthest point and repeat 
-	
+		Vector2f v0 = new Vector2f();
+		Vector2f v1 = new Vector2f();
+		Vector2f v2 = new Vector2f();
 		Vector2f line = new Vector2f();
-		Vector2f proj = new Vector2f();
 
-		for (;;) {
-			// do a bit of a cheat and shift to 0,0 and then back
-			line.set(s1.x - s0.x, s1.y - s0.y);
-			float t = 1.0f / line.length();
-			proj.set(s0.x - line.x * t, s0.y - line.y * t);
+		for (int i = 0; i < c0d.length; i = i + 2) {
+			v0.from(c0d, i);
+			v1.from(c0d, (i + 2) % c0d.length);
+			line.set(v0.y - v1.y, v1.x - v0.x).normalize();
 
-			Vector2f t0 = c0.support(c0.dmesh, proj.x, proj.y);
-			Vector2f t1 = c1.support(c1.dmesh, -proj.x, -proj.y);
+			float c0t0 = Float.MAX_VALUE;
+			float c0t1 = Float.MIN_VALUE;
 
-			s2.set(t0.x - t1.x, t0.y - t1.y);
+			float c1t0 = Float.MAX_VALUE;
+			float c1t1 = Float.MIN_VALUE;
 
-			if (originInTriangle(this.s0, this.s1, this.s2)) {
-				return true;
-			}
-
-			float s0l = s0.dot();
-			float s1l = s1.dot();
-			float s2l = s2.dot();
-
-			// remove furthest and check if done
-			if (s2l >= s0l) {
-				// s2l >= s0l
-				if (s2l >= s1l) {
-					// s2l >= s1l
-					// nothing left
-					break;
+			// test c0d
+			for (int j = 0; j < c0d.length; j = j + 2) {
+				float t = v2.from(c0d, j).dot(line);
+			
+				if (t < c0t0) {
+					c0t0 = t;
 				}
-				// s2l >= s0l
-				// s2l < s1l
-				// s0l <= s2l < s1l
-				s1.from(s2);
-			}
-			else if (s2l >= s1l) {
-				// s2l < s0l
-				// s2l >= s1l
-				// s1l < s2l < s0l
-				s0.from(s2);
-			} else {
-				// s2l < s0l
-				// s2l < s1l
-				if (s0l >= s1l) {
-					// s2l < s1l <= s0l
-					s0.from(s2);
-				} else {
-					// s2l < s0l < s1l
-					s1.from(s2);
+				if (t > c0t1) {
+					c0t1 = t;
 				}
 			}
+
+			// test c1d
+			for (int j = 0; j < c0d.length; j = j + 2) {
+				float t = v2.from(c1d, j).dot(line);
+
+				if (t < c1t0) {
+					c1t0 = t;
+				}
+				if (t > c1t1) {
+					c1t1 = t;
+				}
+			}
+
+			if (c0t0 > c1t1 || c1t0 > c0t1) {
+				return false;
+			}
+
 		}
 
+		for (int i = 0; i < c1d.length; i = i + 2) {
+			v0.from(c1d, i);
+			v1.from(c1d, (i + 2) % c1d.length);
+			line.set(v1.x - v0.x, v1.y - v0.y).normalize();
+			line.set(-line.y, line.x);
 
-		return false;
-	}
+			float c0t0 = Float.MAX_VALUE;
+			float c0t1 = Float.MIN_VALUE;
 
-	// barycentric method
-	private boolean originInTriangle(Vector2f v0, Vector2f v1, Vector2f v2) {
-		float a = 1.0f / (v0.y * (v2.x - v1.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y - v1.y * v2.x);
-		float s = a * (v0.y * v2.x - v0.x * v2.y);
-		float t = a * (v0.x * v1.y - v0.y * v1.x);
-		
-		if (s > 0 && t > 0 && 1 - s - t > 0) {
-			return true;
+			float c1t0 = Float.MAX_VALUE;
+			float c1t1 = Float.MIN_VALUE;
+
+			// test c0d
+			for (int j = 0; j < c0d.length; j = j + 2) {
+				float t = v2.from(c0d, j).dot(line);
+			
+				if (t < c0t0) {
+					c0t0 = t;
+				}
+				if (t > c0t1) {
+					c0t1 = t;
+				}
+			}
+
+			// test c1d
+			for (int j = 0; j < c0d.length; j = j + 2) {
+				float t = v2.from(c1d, j).dot(line);
+
+				if (t < c1t0) {
+					c1t0 = t;
+				}
+				if (t > c1t1) {
+					c1t1 = t;
+				}
+			}
+
+			if (c0t0 >= c1t1 || c1t0 >= c0t1) {
+				return false;
+			}
+
 		}
 
-		return false;
+		c0.dx = 0;
+		c0.dy = 0;
+		c0.dr = 0;
+
+		c1.dx = 0;
+		c1.dy = 0;
+		c1.dr = 0;
+
+		return true;
 	}
 
 }

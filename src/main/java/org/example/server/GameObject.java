@@ -10,4 +10,6 @@ public interface GameObject extends AABB {
 
 	public void collide(GameObject object);
 
+	public PhysicsComponent getPhysicsComponent();
+
 }

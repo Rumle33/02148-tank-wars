@@ -2,8 +2,6 @@ package org.example.Tank;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.geometry.Rectangle2D;
-import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -11,13 +9,14 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import org.example.Maps.Wall;
+import org.example.server.Projectile;
 import org.jspace.RemoteSpace;
 import org.jspace.Space;
 
-import java.awt.Paint;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +35,7 @@ public class Tank extends Application {
     private List<Circle> projectiles = new ArrayList<>();
     private List<Wall> mapWalls;
 	private List<Rectangle> quads = new ArrayList<>();
-
+	private List<Polygon> polygons = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -175,8 +174,12 @@ public class Tank extends Application {
 		for (Rectangle rectangle : this.quads) {
 			root.getChildren().remove(rectangle);
 		}
+		for (Polygon polygon : this.polygons) {
+			root.getChildren().remove(polygon);
+		}
         this.projectiles.clear();
 		this.quads.clear();
+		this.polygons.clear();
 
         // Render tanks and projectiles
         for (String line : lines) {
@@ -187,10 +190,23 @@ public class Tank extends Application {
                 double y = Double.parseDouble(parts[2]);
                 double rotation = Double.parseDouble(parts[3]);
 
+				int score = Integer.parseInt(parts[4]);
+
 				float ax0 = Float.parseFloat(parts[5]);
 				float ay0 = Float.parseFloat(parts[6]);
 				float awidth = Float.parseFloat(parts[7]);
 				float aheight = Float.parseFloat(parts[8]);
+
+				double[] mesh = new double[org.example.server.Tank.MESH.length];
+				for (int i = 0; i < mesh.length; i++) {
+					mesh[i] = Float.parseFloat(parts[9 + i]);
+				}
+
+				Polygon polygon = new Polygon(mesh);
+				polygon.setFill(null);
+				polygon.setStroke(Color.ORANGE);
+				this.polygons.add(polygon);
+				root.getChildren().add(polygon);
 
 				Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
 				quad.setFill(null);
@@ -200,7 +216,7 @@ public class Tank extends Application {
 				root.getChildren().add(quad);
 
                 javafx.application.Platform.runLater(() -> {
-                    System.out.println("Applying rotation for tank: " + playerName + " | Rotation: " + Math.toDegrees(rotation));
+                    // System.out.println("Applying rotation for tank: " + playerName + " | Rotation: " + Math.toDegrees(rotation));
                     ImageView tank = tanks.computeIfAbsent(playerName, playerNameKey -> {
                         ImageView newTank = new ImageView(new Image(
                                 playerNameKey.equals(this.playerName)
@@ -223,7 +239,30 @@ public class Tank extends Application {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
 
-                Circle projectile = new Circle(5, Color.RED);
+				float ax0 = Float.parseFloat(parts[4]);
+				float ay0 = Float.parseFloat(parts[5]);
+				float awidth = Float.parseFloat(parts[6]);
+				float aheight = Float.parseFloat(parts[7]);
+
+				double[] mesh = new double[Projectile.MESH.length];
+				for (int i = 0; i < mesh.length; i++) {
+					mesh[i] = Float.parseFloat(parts[8 + i]);
+				}
+				
+				Polygon polygon = new Polygon(mesh);
+				polygon.setFill(null);
+				polygon.setStroke(Color.ORANGE);
+				this.polygons.add(polygon);
+				root.getChildren().add(polygon);
+
+				Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+				quad.setFill(null);
+				quad.setStroke(Color.RED);
+				quad.setStrokeWidth(1); 
+				this.quads.add(quad);
+				root.getChildren().add(quad); 
+
+                Circle projectile = new Circle(Projectile.PROJECTILE_RADIUS, Color.PURPLE);
                 projectile.setTranslateX(x);
                 projectile.setTranslateY(y);
                 root.getChildren().add(projectile);

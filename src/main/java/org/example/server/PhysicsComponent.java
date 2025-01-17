@@ -6,7 +6,7 @@ import org.example.util.Vector2f;
 public class PhysicsComponent {
 	
 	private float[] meshData;
-	private float x, y, r;
+	public float x, y, r;
 	public float dx, dy, dr;
 
 	// translate matrix
@@ -14,8 +14,8 @@ public class PhysicsComponent {
 	// delta matrix
 	private Matrix3f dm = null;
 
-	public float[] tmesh;
-	public float[] dmesh;
+	private float[] tmesh;
+	private float[] dmesh;
 
 	public PhysicsComponent(float x, float y, float r, float[] meshData) {
 		this.x = x;
@@ -58,6 +58,10 @@ public class PhysicsComponent {
 		}
 	}
 
+	public float[] getTransformMesh() {
+		return this.tmesh;
+	}
+
 	private void updateDMesh() {
 		Matrix3f m = this.getDeltaTransform();
 		Vector2f v = new Vector2f();
@@ -65,6 +69,14 @@ public class PhysicsComponent {
 		for (int i = 0; i < this.meshData.length; i = i + 2) {
 			v.from(this.meshData, i).apply(m).dump(dmesh, i);
 		}
+	}
+
+	public float[] getDeltaMesh() {
+		this.getDeltaTransform();
+		if (this.dm == null) {
+			this.updateDMesh();
+		}
+		return this.dmesh;
 	}
 
 	public Matrix3f getMeshTransform() {
@@ -79,26 +91,5 @@ public class PhysicsComponent {
 			this.updateDMesh();
 		}
 		return this.dm;
-	}
-
-	public Vector2f support(float[] mesh, float x, float y) {
-		Vector2f dir = new Vector2f(x, y).normalize();
-		float ilen = 1.0f / dir.length();
-		Vector2f f_v = new Vector2f();
-		float f_t = Float.MIN_VALUE;
-		Vector2f v = new Vector2f();
-
-		for (int i = 0; i < mesh.length; i = i + 2) {
-			v.from(mesh, i);
-
-			float t = v.dot(dir) * ilen;
-
-			if (t > f_t) {
-				f_t = t;
-				f_v.from(v);
-			}
-		}
-
-		return f_v;
 	}
 }

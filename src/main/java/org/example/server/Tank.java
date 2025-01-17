@@ -4,11 +4,14 @@ import org.example.util.MathUtil;
 
 public class Tank implements GameObject {
 
-	public float x;
-	public float y;
-	public float rotation; // Rotation in radians
-	public float velocity;
-	public float angularVelocity;
+	public static final float TANK_WIDTH = 40.0f;
+	public static final float TANK_HEIGHT = 40.0f;
+
+	private float x;
+	private float y;
+	private float rotation; // Rotation in radians
+	private float velocity;
+	private float angularVelocity;
 
 	public float acceleration;
 	public float angularAcceleration;
@@ -21,14 +24,29 @@ public class Tank implements GameObject {
 
 	public int score;
 
+	private PhysicsComponent physics;
+
+	public static final float MESH[] = {
+		-TANK_HEIGHT / 2, -TANK_WIDTH / 2,
+		-TANK_HEIGHT / 2, TANK_WIDTH / 2,
+		TANK_HEIGHT / 2, TANK_WIDTH / 2,
+		TANK_HEIGHT / 2, -TANK_WIDTH / 2
+	};
+
 	public Tank(String name, int score) {
 		this.name = name;
 		this.score = score;
+
+		this.physics = new PhysicsComponent(0, 0, 0, Tank.MESH);
 	}
 
 	@Override
 	public boolean update(Simulation simulation, float delta) {
 		if (!isAlive) return false;
+
+		this.x = physics.x;
+		this.y = physics.y;
+		this.rotation = physics.r;
 
 		// Gradual stop when no acceleration
 		if (acceleration == 0) {
@@ -43,19 +61,25 @@ public class Tank implements GameObject {
 		// Update velocity and position
 		velocity = MathUtil.clamp(velocity + acceleration * delta, -maxVelocity, maxVelocity);
 		angularVelocity = MathUtil.clamp(angularVelocity + angularAcceleration * delta, -maxAngularVelocity, maxAngularVelocity);
-		rotation += angularVelocity * delta;
 
+		float dr = angularVelocity * delta;
 		float dx = (float) (velocity * Math.cos(rotation) * delta);
 		float dy = (float) (velocity * Math.sin(rotation) * delta);
-		x += dx;
-		y += dy;
+
+		this.physics.dx = dx;
+		this.physics.dy = dy;
+		this.physics.dr = dr;
+
+		// rotation += dr;
+		// x += dx;
+		// y += dy;
 
 		// Update AABB
-		final float width = 40.0f;
-		final float height = 40.0f;
+		final float width = Tank.TANK_WIDTH;
+		final float height = Tank.TANK_HEIGHT;
 
-		this.aabb_width = (float)(Math.abs(Math.cos(this.rotation)) * width + Math.abs(Math.sin(this.rotation)) * height);
-		this.aabb_height = (float)(Math.abs(Math.sin(this.rotation)) * width + Math.abs(Math.cos(this.rotation)) * height);
+		this.aabb_width = (float)(Math.abs(Math.cos(this.rotation)) * height + Math.abs(Math.sin(this.rotation)) * width);
+		this.aabb_height = (float)(Math.abs(Math.sin(this.rotation)) * height + Math.abs(Math.cos(this.rotation)) * width);
 		this.aabb_x = this.x - this.aabb_width * 0.5f;
 		this.aabb_y = this.y - this.aabb_height * 0.5f;
 
@@ -74,11 +98,51 @@ public class Tank implements GameObject {
 			.append(this.getAABBY()).append(" ")
 			.append(this.getAABBWidth()).append(" ")
 			.append(this.getAABBHeight()).append(" ")
-			.append("\n");
+		;
+
+		float[] mesh = this.physics.getTransformMesh();
+		for (int i = 0; i < mesh.length; i++) {
+			buffer.append(mesh[i]).append(" ");
+		}
+
+		buffer.append("\n");
 	}
 
-	public float aabb_x, aabb_y;
-	public float aabb_width, aabb_height;
+	private float aabb_x, aabb_y;
+	private float aabb_width, aabb_height;
+
+	public float getX() {
+		return this.x;
+	}
+
+	public float getY() {
+		return this.y;
+	}
+
+	public float getRotation() {
+		return this.rotation;
+	}
+
+	public Tank setX(float x) {
+		this.x = x;
+		this.physics.x = x;
+
+		return this;
+	}
+
+	public Tank setY(float y) {
+		this.y = y;
+		this.physics.y = y;
+
+		return this;
+	}
+
+	public Tank setRotation(float rotation) {
+		this.rotation = rotation;
+		this.physics.r = rotation;
+
+		return this;
+	}
 
 	@Override
 	public float getAABBX() {
@@ -104,11 +168,16 @@ public class Tank implements GameObject {
 	public void collide(GameObject object) {
 		if (object instanceof Projectile) {
 			System.out.println("Tank hit projectile!");
-			this.isAlive = false;
+			// this.isAlive = false;
 		} else if (object instanceof Tank) {
 			System.out.println("Tank hit tank!");
 		} else {
 			System.out.println("Tank hit unknown!");
 		}
+	}
+
+	@Override
+	public PhysicsComponent getPhysicsComponent() {
+		return this.physics;
 	}
 }
