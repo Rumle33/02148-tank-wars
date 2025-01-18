@@ -5,7 +5,7 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import org.jspace.*;
@@ -20,10 +20,17 @@ public class LobbyClient extends Application {
 
     private RemoteSpace lobbySpace;
     private final ListView<String> playerListView = new ListView<>();
+    private final TextArea chatArea = new TextArea();
+    private final TextField chatInput = new TextField();
+    private final Button sendButton = new Button("Send");
+
     private boolean ready = false;
     private final Button readyButton = new Button("Not Ready");
     private String playerName;
     private ScheduledExecutorService scheduler;
+
+    // Adjust the client poll interval
+    private static final int POLL_INTERVAL_MS = 300;
 
     @Override
     public void start(Stage primaryStage) {
@@ -34,15 +41,25 @@ public class LobbyClient extends Application {
         TextField nameField = new TextField();
         Button joinButton = new Button("Join Lobby");
 
+        // Initially hide the lobby UI (we'll show it after join)
+        VBox lobbyUI = new VBox(10);
         Label lobbyLabel = new Label("Lobby - Connected Players");
         readyButton.setStyle("-fx-background-color: red;");
         readyButton.setDisable(true); // disabled until we join
 
-        readyButton.setOnAction(e -> toggleReadyStatus());
+        // Set up chat
+        chatArea.setEditable(false);
+        chatArea.setPrefHeight(200);
+        HBox chatControls = new HBox(5, chatInput, sendButton);
+        chatControls.setPrefHeight(30);
 
+        // Put the player list, ready button, chat area, chat input all together
+        lobbyUI.getChildren().addAll(lobbyLabel, playerListView, readyButton, new Label("Lobby Chat:"), chatArea, chatControls);
+
+        // We'll initially show just the name input
         root.getChildren().addAll(nameLabel, nameField, joinButton);
 
-        Scene scene = new Scene(root, 300, 400);
+        Scene scene = new Scene(root, 400, 500);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Tank Game Lobby");
         primaryStage.show();
@@ -55,7 +72,7 @@ public class LobbyClient extends Application {
 
                 // Clear the UI and show the lobby interface
                 root.getChildren().clear();
-                root.getChildren().addAll(lobbyLabel, playerListView, readyButton);
+                root.getChildren().add(lobbyUI);
                 readyButton.setDisable(false);
 
                 connectToServer();
@@ -63,6 +80,12 @@ public class LobbyClient extends Application {
                 showError("Player name cannot be empty!");
             }
         });
+
+        // Toggle ready on button click
+        readyButton.setOnAction(e -> toggleReadyStatus());
+
+        // Send chat messages on button click
+        sendButton.setOnAction(e -> sendChatMessage());
     }
 
     /**
@@ -83,18 +106,18 @@ public class LobbyClient extends Application {
 
         } catch (Exception e) {
             System.err.println("Connection failed: " + e.getMessage());
-            showError("Failed to connect to server. Ensure it is running and reachable at " + SERVER_URI);
+            showError("Failed to connect to server. Ensure it is running at " + SERVER_URI);
         }
     }
 
     /**
-     * Periodically checks for:
-     *   1) ALL ("UPDATE", somePlayer, isReady) tuples (non-destructive read)
-     *   2) Then a ("START_GAME", thisPlayerName) tuple (destructive read)
+     * Periodically reads:
+     *   1) ALL ("UPDATE", somePlayer, isReady) tuples (non-destructive)
+     *   2) ALL ("CHAT_MSG", somePlayer, message) tuples (non-destructive)
+     *   3) Then a "START_GAME" (thisPlayer) destructively
      */
     private void startPollingUpdates() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
-        // Poll every 200ms instead of every second
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 // 1) Non-destructive read of all "UPDATE"
@@ -104,53 +127,75 @@ public class LobbyClient extends Application {
                         new FormalField(Boolean.class)
                 );
 
-                // Rebuild the UI with the new snapshot
-                Platform.runLater(() -> refreshPlayerList(allUpdates));
+                // 2) Non-destructive read of all "CHAT_MSG"
+                List<Object[]> allChats = lobbySpace.queryAll(
+                        new ActualField("CHAT_MSG"),
+                        new FormalField(String.class),  // sender
+                        new FormalField(String.class)   // message
+                );
 
-                // 2) Destructive read for "START_GAME" (unique to this player)
+                // 3) Destructive read for START_GAME for this player
                 Object[] startGameTuple = lobbySpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
-                if (startGameTuple != null) {
-                    Platform.runLater(this::handleStartGame);
-                }
+
+                // Update the UI in the JavaFX thread
+                Platform.runLater(() -> {
+                    refreshPlayerList(allUpdates);
+                    refreshChat(allChats);
+
+                    if (startGameTuple != null) {
+                        handleStartGame();
+                    }
+                });
 
             } catch (Exception e) {
                 System.err.println("Error polling updates: " + e.getMessage());
             }
-        }, 0, 200, TimeUnit.MILLISECONDS); // <-- Poll every 200ms
+        }, 0, POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
-
     /**
-     * Clear the player list and re-add all current player statuses from "UPDATE" tuples.
+     * Clear and rebuild the entire player list from "UPDATE" tuples.
      */
     private void refreshPlayerList(List<Object[]> allUpdates) {
-        // Clear the old list
         playerListView.getItems().clear();
-
-        // Rebuild the entire list
-        for (Object[] update : allUpdates) {
-            String type = (String) update[0];          // "UPDATE"
-            String updatedPlayer = (String) update[1];
-            Boolean isReadyStatus = (Boolean) update[2];
+        for (Object[] tuple : allUpdates) {
+            String type = (String) tuple[0]; // "UPDATE"
+            String updatedPlayer = (String) tuple[1];
+            Boolean isReadyStatus = (Boolean) tuple[2];
 
             if ("UPDATE".equals(type)) {
                 String displayName = updatedPlayer.equals(playerName)
                         ? "Me (" + updatedPlayer + ")"
                         : updatedPlayer;
-
-                String statusString = displayName + (isReadyStatus ? " (Ready)" : " (Not Ready)");
-                playerListView.getItems().add(statusString);
-
-                //System.out.println("Refreshed player: " + statusString);
+                String status = displayName + (isReadyStatus ? " (Ready)" : " (Not Ready)");
+                playerListView.getItems().add(status);
             }
         }
     }
 
     /**
-     * Toggles the ready state for this player and updates the server.
+     * Clear and rebuild the chat area from "CHAT_MSG" tuples.
+     */
+    private void refreshChat(List<Object[]> allChats) {
+        chatArea.clear();
+        // Sort by time? (In jSpace, there's no timestamp by default.)
+        // We'll just display them in the order we get them:
+        for (Object[] tuple : allChats) {
+            String type = (String) tuple[0];  // "CHAT_MSG"
+            String sender = (String) tuple[1];
+            String message = (String) tuple[2];
+
+            if ("CHAT_MSG".equals(type)) {
+                chatArea.appendText(sender + ": " + message + "\n");
+            }
+        }
+    }
+
+    /**
+     * Toggles the ready state for this player and notifies the server.
      */
     private void toggleReadyStatus() {
         try {
@@ -158,10 +203,7 @@ public class LobbyClient extends Application {
             readyButton.setText(ready ? "Ready" : "Not Ready");
             readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
 
-            // Send the action to the server
-            String action = ready ? "READY" : "NOT_READY";
-            lobbySpace.put(playerName, action);
-
+            lobbySpace.put(playerName, ready ? "READY" : "NOT_READY");
             System.out.println(playerName + " is now " + (ready ? "ready" : "not ready"));
         } catch (InterruptedException e) {
             showError("Error toggling ready status: " + e.getMessage());
@@ -169,8 +211,24 @@ public class LobbyClient extends Application {
     }
 
     /**
+     * Sends a chat message as ("CHAT_MSG", playerName, text).
+     */
+    private void sendChatMessage() {
+        String text = chatInput.getText().trim();
+        if (!text.isEmpty()) {
+            try {
+                // Put a 3-field tuple for chat
+                lobbySpace.put("CHAT_MSG", playerName, text);
+                chatInput.clear();
+            } catch (InterruptedException e) {
+                showError("Error sending chat message: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Called once we detect ("START_GAME", playerName).
-     * Here you can transition to your game scene or close the lobby UI.
+     * Close the lobby or transition to the game scene.
      */
     private void handleStartGame() {
         Alert alert = new Alert(AlertType.INFORMATION);
@@ -179,9 +237,15 @@ public class LobbyClient extends Application {
         alert.setContentText("The game is starting now for " + playerName + "!");
         alert.showAndWait();
 
-        // e.g. close the lobby window if desired:
-        // Stage stage = (Stage) readyButton.getScene().getWindow();
-        // stage.close();
+        // Option 1: Close the lobby window
+        Stage stage = (Stage) playerListView.getScene().getWindow();
+        stage.close();
+
+        // Option 2: Or just hide chat controls if you prefer, e.g.:
+        // chatArea.setVisible(false);
+        // chatInput.setVisible(false);
+        // sendButton.setVisible(false);
+        // readyButton.setVisible(false);
     }
 
     /**

@@ -11,8 +11,8 @@ public class LobbyServer {
     private static final Map<String, Boolean> players = new HashMap<>();
     private static boolean gameStarted = false; // Flag to prevent multiple triggers
 
-    // Adjust the broadcast frequency (milliseconds)
-    private static final int BROADCAST_DELAY_MS = 200; // e.g. faster than 500ms
+    // Speed up broadcast so clients see changes quickly
+    private static final int BROADCAST_DELAY_MS = 300;
 
     public static void main(String[] args) {
         repository = new SpaceRepository();
@@ -20,46 +20,41 @@ public class LobbyServer {
         repository.add("lobby", lobbySpace);
 
         try {
-            // 1) Open the gate
+            // Open the TCP gate on port 9001
             repository.addGate("tcp://127.0.0.1:9001/?keep");
-            System.out.println("LobbyServer started and listening on " + LOBBY_URI);
-            System.out.println("Gate successfully opened at 127.0.0.1:9001/?keep");
+            System.out.println("LobbyServer started on " + LOBBY_URI);
 
-            // 2) On startup, clear out any old stale "UPDATE" or "START_GAME" tuples
-            //    so we start with a completely clean space.
-            lobbySpace.getAll(
-                    new ActualField("UPDATE"),
-                    new FormalField(String.class),
-                    new FormalField(Boolean.class)
-            );
-            lobbySpace.getAll(
-                    new ActualField("START_GAME"),
-                    new FormalField(String.class)
-            );
-            System.out.println("Old UPDATE/START_GAME tuples cleared.");
+            // 1) Clear out any old data in case of leftover from previous runs
+            lobbySpace.getAll(new ActualField("UPDATE"), new FormalField(String.class), new FormalField(Boolean.class));
+            lobbySpace.getAll(new ActualField("START_GAME"), new FormalField(String.class));
+            // Remove any old chat messages
+            lobbySpace.getAll(new ActualField("CHAT_MSG"), new FormalField(String.class), new FormalField(String.class));
+            System.out.println("Cleaned up old tuples in the lobby space.");
+
         } catch (Exception e) {
             System.err.println("Error opening gate: " + e.getMessage());
             e.printStackTrace();
             return;
         }
 
-        // Threads to handle incoming JOIN/LEAVE/READY/NOT_READY and to broadcast updates
+        // Threads to handle actions and to broadcast "UPDATE"
         new Thread(LobbyServer::handleLobby).start();
         new Thread(LobbyServer::broadcastUpdates).start();
     }
 
     /**
      * Continuously wait for player actions: JOIN, LEAVE, READY, NOT_READY.
+     * (Does NOT handle CHAT_MSG, so those remain in the space.)
      */
     private static void handleLobby() {
         try {
             while (true) {
                 System.out.println("Waiting for player actions...");
-                // Blocks until we get a tuple of shape (String, String)
+                // Wait for a tuple of shape (String, String)
                 Object[] tuple = lobbySpace.get(new FormalField(String.class), new FormalField(String.class));
                 String playerName = (String) tuple[0];
                 String action = (String) tuple[1];
-                System.out.println("Received action: " + action + " from player: " + playerName);
+                System.out.println("Received action: " + action + " from: " + playerName);
 
                 synchronized (players) {
                     switch (action) {
@@ -71,16 +66,14 @@ public class LobbyServer {
                         case "LEAVE":
                             players.remove(playerName);
                             System.out.println(playerName + " left the lobby.");
-                            // Remove any leftover UPDATE tuple so other clients don't see them
-                            try {
-                                lobbySpace.getAll(
-                                        new ActualField("UPDATE"),
-                                        new ActualField(playerName),
-                                        new FormalField(Boolean.class)
-                                );
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
+                            // Remove that player's "UPDATE" tuple so they vanish from clients
+                            lobbySpace.getAll(
+                                    new ActualField("UPDATE"),
+                                    new ActualField(playerName),
+                                    new FormalField(Boolean.class)
+                            );
+                            // Optionally, remove any chat messages from them if you want:
+                            // lobbySpace.getAll(new ActualField("CHAT_MSG"), new ActualField(playerName), new FormalField(String.class));
                             break;
 
                         case "READY":
@@ -98,7 +91,7 @@ public class LobbyServer {
                             break;
                     }
 
-                    // After each action, check if everyone is ready
+                    // After each action, see if we should start the game
                     checkGameStart();
                 }
             }
@@ -109,8 +102,7 @@ public class LobbyServer {
     }
 
     /**
-     * Periodically ensures exactly one ("UPDATE", playerName, isReady) tuple
-     * is in the space for each CURRENT player. Removed players won't get new tuples.
+     * Periodically updates ("UPDATE", playerName, isReady) for each player.
      */
     private static void broadcastUpdates() {
         while (true) {
@@ -118,14 +110,9 @@ public class LobbyServer {
                 Thread.sleep(BROADCAST_DELAY_MS);
 
                 synchronized (players) {
-                    // For each known player, remove old "UPDATE" for that player, then insert fresh status
+                    // For each known player, remove old "UPDATE" then insert fresh
                     for (String name : players.keySet()) {
-                        lobbySpace.getp(
-                                new ActualField("UPDATE"),
-                                new ActualField(name),
-                                new FormalField(Boolean.class)
-                        );
-                        // Insert the latest status
+                        lobbySpace.getp(new ActualField("UPDATE"), new ActualField(name), new FormalField(Boolean.class));
                         Boolean isReady = players.get(name);
                         lobbySpace.put("UPDATE", name, isReady);
                     }
@@ -138,30 +125,32 @@ public class LobbyServer {
     }
 
     /**
-     * Checks if every player in the lobby is ready (and not empty).
-     * If so, starts the game after 3 seconds by putting START_GAME tuples for each player.
+     * If all players are ready, start the game after 3 seconds and remove chat messages.
      */
     private static void checkGameStart() {
-        if (!gameStarted && !players.isEmpty()
-                && players.values().stream().allMatch(ready -> ready)) {
-
+        if (!gameStarted && !players.isEmpty() && players.values().stream().allMatch(ready -> ready)) {
             gameStarted = true;
-            System.out.println("All players are ready. Starting the game in 3 seconds!");
+            System.out.println("All players ready! Game will start in 3 seconds...");
 
             new Thread(() -> {
                 try {
                     Thread.sleep(3000);
-
                     synchronized (players) {
-                        // 1) Put one tuple for the server:
+                        // Remove all chat messages before the game starts (optional)
+                        lobbySpace.getAll(
+                                new ActualField("CHAT_MSG"),
+                                new FormalField(String.class),
+                                new FormalField(String.class)
+                        );
+                        System.out.println("Removed all chat messages from the lobby.");
+
+                        // Send START_GAME to server + each client
                         lobbySpace.put("START_GAME", "SERVER");
-                        // 2) Put one tuple for each client:
                         for (String pName : players.keySet()) {
                             lobbySpace.put("START_GAME", pName);
                         }
+                        System.out.println("START_GAME signal sent.");
                     }
-                    System.out.println("START_GAME signal sent to the server + each client.");
-
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
