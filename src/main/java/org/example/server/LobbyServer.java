@@ -11,15 +11,32 @@ public class LobbyServer {
     private static final Map<String, Boolean> players = new HashMap<>();
     private static boolean gameStarted = false; // Flag to prevent multiple triggers
 
+    // Adjust the broadcast frequency (milliseconds)
+    private static final int BROADCAST_DELAY_MS = 200; // e.g. faster than 500ms
+
     public static void main(String[] args) {
         repository = new SpaceRepository();
         lobbySpace = new SequentialSpace();
         repository.add("lobby", lobbySpace);
 
         try {
+            // 1) Open the gate
             repository.addGate("tcp://127.0.0.1:9001/?keep");
             System.out.println("LobbyServer started and listening on " + LOBBY_URI);
             System.out.println("Gate successfully opened at 127.0.0.1:9001/?keep");
+
+            // 2) On startup, clear out any old stale "UPDATE" or "START_GAME" tuples
+            //    so we start with a completely clean space.
+            lobbySpace.getAll(
+                    new ActualField("UPDATE"),
+                    new FormalField(String.class),
+                    new FormalField(Boolean.class)
+            );
+            lobbySpace.getAll(
+                    new ActualField("START_GAME"),
+                    new FormalField(String.class)
+            );
+            System.out.println("Old UPDATE/START_GAME tuples cleared.");
         } catch (Exception e) {
             System.err.println("Error opening gate: " + e.getMessage());
             e.printStackTrace();
@@ -54,6 +71,16 @@ public class LobbyServer {
                         case "LEAVE":
                             players.remove(playerName);
                             System.out.println(playerName + " left the lobby.");
+                            // Remove any leftover UPDATE tuple so other clients don't see them
+                            try {
+                                lobbySpace.getAll(
+                                        new ActualField("UPDATE"),
+                                        new ActualField(playerName),
+                                        new FormalField(Boolean.class)
+                                );
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                             break;
 
                         case "READY":
@@ -82,35 +109,27 @@ public class LobbyServer {
     }
 
     /**
-     * Periodically broadcasts ("UPDATE", playerName, isReady) tuples for each player.
-     * This can be consumed by clients to refresh the lobby list.
-     * <p>
-     * Note: This example removes old "UPDATE" tuples to avoid a huge backlog in the space.
+     * Periodically ensures exactly one ("UPDATE", playerName, isReady) tuple
+     * is in the space for each CURRENT player. Removed players won't get new tuples.
      */
     private static void broadcastUpdates() {
         while (true) {
             try {
-                Thread.sleep(500); // Adjust frequency as needed (500ms, for example)
+                Thread.sleep(BROADCAST_DELAY_MS);
 
                 synchronized (players) {
-                    // 1) Remove old "UPDATE" tuples to prevent build-up (optional but recommended)
+                    // For each known player, remove old "UPDATE" for that player, then insert fresh status
                     for (String name : players.keySet()) {
-                        // Remove all matching UPDATE tuples for this name
-                        lobbySpace.getAll(
+                        lobbySpace.getp(
                                 new ActualField("UPDATE"),
                                 new ActualField(name),
                                 new FormalField(Boolean.class)
                         );
-                    }
-
-                    // 2) Insert the latest status
-                    for (Map.Entry<String, Boolean> entry : players.entrySet()) {
-                        String playerName = entry.getKey();
-                        Boolean isReady = entry.getValue();
-                        lobbySpace.put("UPDATE", playerName, isReady);
+                        // Insert the latest status
+                        Boolean isReady = players.get(name);
+                        lobbySpace.put("UPDATE", name, isReady);
                     }
                 }
-                // System.out.println("Broadcasted updated player list to all clients.");
             } catch (InterruptedException e) {
                 System.err.println("Error broadcasting updates: " + e.getMessage());
                 e.printStackTrace();

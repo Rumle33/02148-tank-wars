@@ -10,6 +10,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import org.jspace.*;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -88,68 +89,64 @@ public class LobbyClient extends Application {
 
     /**
      * Periodically checks for:
-     *   1) ALL ("UPDATE", somePlayer, isReady) tuples
-     *   2) Then a ("START_GAME", thisPlayerName) tuple
+     *   1) ALL ("UPDATE", somePlayer, isReady) tuples (non-destructive read)
+     *   2) Then a ("START_GAME", thisPlayerName) tuple (destructive read)
      */
     private void startPollingUpdates() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
+        // Poll every 200ms instead of every second
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                // 1) Process ALL available UPDATE tuples in a loop
-                Object[] update;
-                while ((update = lobbySpace.getp(
+                // 1) Non-destructive read of all "UPDATE"
+                List<Object[]> allUpdates = lobbySpace.queryAll(
                         new ActualField("UPDATE"),
                         new FormalField(String.class),
                         new FormalField(Boolean.class)
-                )) != null) {
-                    String type = (String) update[0];
-                    String updatedPlayer = (String) update[1];
-                    Boolean isReadyStatus = (Boolean) update[2];
+                );
 
-                    if ("UPDATE".equals(type)) {
-                        // Update the UI for each new update we find
-                        Platform.runLater(() -> updatePlayerUI(updatedPlayer, isReadyStatus));
-                    }
-                }
+                // Rebuild the UI with the new snapshot
+                Platform.runLater(() -> refreshPlayerList(allUpdates));
 
-                // 2) Check for a START_GAME tuple for this player
+                // 2) Destructive read for "START_GAME" (unique to this player)
                 Object[] startGameTuple = lobbySpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
                 if (startGameTuple != null) {
-                    // We received our start signal
-                    System.out.println("Received START_GAME signal for player: " + playerName);
                     Platform.runLater(this::handleStartGame);
                 }
 
             } catch (Exception e) {
                 System.err.println("Error polling updates: " + e.getMessage());
             }
-        }, 0, 1, TimeUnit.SECONDS); // Poll every second
+        }, 0, 200, TimeUnit.MILLISECONDS); // <-- Poll every 200ms
     }
 
+
     /**
-     * Update the UI for a single player (displaying Ready/Not Ready).
-     * Displays the local player as "Me (myName)" and others by their normal name.
+     * Clear the player list and re-add all current player statuses from "UPDATE" tuples.
      */
-    private void updatePlayerUI(String updatedPlayerName, Boolean isReady) {
-        // If this update is for the local player, display "Me (playerName)".
-        String displayName = updatedPlayerName.equals(playerName)
-                ? "Me (" + updatedPlayerName + ")"
-                : updatedPlayerName;
+    private void refreshPlayerList(List<Object[]> allUpdates) {
+        // Clear the old list
+        playerListView.getItems().clear();
 
-        String status = displayName + (isReady ? " (Ready)" : " (Not Ready)");
+        // Rebuild the entire list
+        for (Object[] update : allUpdates) {
+            String type = (String) update[0];          // "UPDATE"
+            String updatedPlayer = (String) update[1];
+            Boolean isReadyStatus = (Boolean) update[2];
 
-        // Remove old entry for that player
-        //   (handling both "Me (X)" and "X" in the remove logic)
-        playerListView.getItems().removeIf(item ->
-                item.startsWith(updatedPlayerName) || item.startsWith("Me (" + updatedPlayerName)
-        );
+            if ("UPDATE".equals(type)) {
+                String displayName = updatedPlayer.equals(playerName)
+                        ? "Me (" + updatedPlayer + ")"
+                        : updatedPlayer;
 
-        // Add the new status line
-        playerListView.getItems().add(status);
-        System.out.println("Updated player: " + status);
+                String statusString = displayName + (isReadyStatus ? " (Ready)" : " (Not Ready)");
+                playerListView.getItems().add(statusString);
+
+                //System.out.println("Refreshed player: " + statusString);
+            }
+        }
     }
 
     /**
@@ -160,7 +157,11 @@ public class LobbyClient extends Application {
             ready = !ready;
             readyButton.setText(ready ? "Ready" : "Not Ready");
             readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
-            lobbySpace.put(playerName, ready ? "READY" : "NOT_READY");
+
+            // Send the action to the server
+            String action = ready ? "READY" : "NOT_READY";
+            lobbySpace.put(playerName, action);
+
             System.out.println(playerName + " is now " + (ready ? "ready" : "not ready"));
         } catch (InterruptedException e) {
             showError("Error toggling ready status: " + e.getMessage());
