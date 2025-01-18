@@ -10,6 +10,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import org.jspace.*;
 
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +20,14 @@ public class LobbyClient extends Application {
 
     private RemoteSpace lobbySpace;
     private final ListView<String> playerListView = new ListView<>();
+
+    /**
+     * Keep track of each player's 'ready' status in a stable (insertion) order
+     * so they don't jump around in the list. Because we receive the entire snapshot,
+     * we can just replace localPlayers with the server's snapshot each time.
+     */
+    private final Map<String, Boolean> localPlayers = new LinkedHashMap<>();
+
     private boolean ready = false;
     private final Button readyButton = new Button("Not Ready");
     private String playerName;
@@ -77,7 +86,7 @@ public class LobbyClient extends Application {
             lobbySpace.put(playerName, "JOIN");
             System.out.println("Connected to server as " + playerName);
 
-            // Start polling the space for updates and START_GAME signal
+            // Start polling the space for updates (UPDATE_ALL) and START_GAME signals
             startPollingUpdates();
 
         } catch (Exception e) {
@@ -88,68 +97,68 @@ public class LobbyClient extends Application {
 
     /**
      * Periodically checks for:
-     *   1) ALL ("UPDATE", somePlayer, isReady) tuples
+     *   1) ALL ("UPDATE_ALL", Map<String, Boolean>) tuples
      *   2) Then a ("START_GAME", thisPlayerName) tuple
      */
     private void startPollingUpdates() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        // Poll more frequently, e.g., every 200 ms to match LobbyServer's broadcast
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                // 1) Process ALL available UPDATE tuples in a loop
-                Object[] update;
-                while ((update = lobbySpace.getp(
-                        new ActualField("UPDATE"),
-                        new FormalField(String.class),
-                        new FormalField(Boolean.class)
-                )) != null) {
-                    String type = (String) update[0];
-                    String updatedPlayer = (String) update[1];
-                    Boolean isReadyStatus = (Boolean) update[2];
+                // 1) Look (non-blocking) for the "UPDATE_ALL" tuple WITHOUT removing it
+                Object[] updateAll = lobbySpace.queryp(
+                        new ActualField("UPDATE_ALL"),
+                        new FormalField(Object.class)
+                );
+                if (updateAll != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Boolean> snapshot = (Map<String, Boolean>) updateAll[1];
 
-                    if ("UPDATE".equals(type)) {
-                        // Update the UI for each new update we find
-                        Platform.runLater(() -> updatePlayerUI(updatedPlayer, isReadyStatus));
-                    }
+                    // Update localPlayers with the entire snapshot
+                    localPlayers.clear();
+                    localPlayers.putAll(snapshot);
+
+                    Platform.runLater(this::refreshPlayerList);
                 }
 
-                // 2) Check for a START_GAME tuple for this player
+                // 2) Check for "START_GAME" tuple for this player (still getp(...) because each client
+                //    should remove its own start signal)
                 Object[] startGameTuple = lobbySpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
                 if (startGameTuple != null) {
-                    // We received our start signal
-                    System.out.println("Received START_GAME signal for player: " + playerName);
                     Platform.runLater(this::handleStartGame);
                 }
 
             } catch (Exception e) {
                 System.err.println("Error polling updates: " + e.getMessage());
             }
-        }, 0, 1, TimeUnit.SECONDS); // Poll every second
+        }, 0, 200, TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Update the UI for a single player (displaying Ready/Not Ready).
-     * Displays the local player as "Me (myName)" and others by their normal name.
-     */
-    private void updatePlayerUI(String updatedPlayerName, Boolean isReady) {
-        // If this update is for the local player, display "Me (playerName)".
-        String displayName = updatedPlayerName.equals(playerName)
-                ? "Me (" + updatedPlayerName + ")"
-                : updatedPlayerName;
+        /**
+         * Rebuilds the playerListView from the localPlayers map in stable order.
+         * This ensures each player stays in the same index (i.e., insertion order).
+         */
+    private void refreshPlayerList() {
+        // Clear the old items
+        playerListView.getItems().clear();
 
-        String status = displayName + (isReady ? " (Ready)" : " (Not Ready)");
+        // Iterate in stable insertion order
+        for (Map.Entry<String, Boolean> entry : localPlayers.entrySet()) {
+            String pName = entry.getKey();
+            Boolean isReady = entry.getValue();
 
-        // Remove old entry for that player
-        //   (handling both "Me (X)" and "X" in the remove logic)
-        playerListView.getItems().removeIf(item ->
-                item.startsWith(updatedPlayerName) || item.startsWith("Me (" + updatedPlayerName)
-        );
+            // If this is the local player, display "Me (pName)"
+            String displayName = pName.equals(playerName)
+                    ? "Me (" + pName + ")"
+                    : pName;
 
-        // Add the new status line
-        playerListView.getItems().add(status);
-        System.out.println("Updated player: " + status);
+            String status = displayName + (isReady ? " (Ready)" : " (Not Ready)");
+            playerListView.getItems().add(status);
+        }
     }
 
     /**
@@ -160,6 +169,8 @@ public class LobbyClient extends Application {
             ready = !ready;
             readyButton.setText(ready ? "Ready" : "Not Ready");
             readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
+
+            // Inform the server
             lobbySpace.put(playerName, ready ? "READY" : "NOT_READY");
             System.out.println(playerName + " is now " + (ready ? "ready" : "not ready"));
         } catch (InterruptedException e) {
@@ -172,16 +183,35 @@ public class LobbyClient extends Application {
      * Here you can transition to your game scene or close the lobby UI.
      */
     private void handleStartGame() {
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("Game Started!");
-        alert.setHeaderText(null);
-        alert.setContentText("The game is starting now for " + playerName + "!");
-        alert.showAndWait();
+        // 1) Close the lobby UI
+        Stage lobbyStage = (Stage) readyButton.getScene().getWindow();
+        lobbyStage.close();
 
-        // e.g. close the lobby window if desired:
-        // Stage stage = (Stage) readyButton.getScene().getWindow();
-        // stage.close();
+        // 2) Connect to the TankServer's game space
+        try {
+            RemoteSpace gameSpace = new RemoteSpace("tcp://127.0.0.1:9002/game?keep");
+            System.out.println("LobbyClient connected to the game space on port 9002");
+
+            // 3) (Optional) Launch a "TankGame" scene,
+            //    or pass 'gameSpace' to your game logic class:
+            Stage gameStage = new Stage();
+            gameStage.setTitle("Tank Game - " + playerName);
+
+            // Example minimal scene:
+            Label info = new Label("Player " + playerName + " is now in the game!");
+            Scene gameScene = new Scene(new VBox(info), 400, 300);
+            gameStage.setScene(gameScene);
+            gameStage.show();
+
+            // In a real scenario, you'd keep 'gameSpace' to do further communications,
+            // e.g. TankGame simulation calls.
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Failed to connect to game space: " + e.getMessage());
+        }
     }
+
 
     /**
      * Shows an error message in a JavaFX Alert.
