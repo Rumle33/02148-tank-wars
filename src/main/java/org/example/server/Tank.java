@@ -1,110 +1,195 @@
 package org.example.server;
 
+import org.example.Maps.Wall;
 import org.example.util.MathUtil;
 
 public class Tank implements GameObject {
 
-    public float x;
-    public float y;
-    public float rotation; // Rotation in radians
-    public float velocity;
-    public float angularVelocity;
+	public static final float TANK_WIDTH = 25.0f;
+	public static final float TANK_HEIGHT = 25.0f;
 
-    public float acceleration;
-    public float angularAcceleration;
+	private float x;
+	private float y;
+	private float rotation; // Rotation in radians
+	private float velocity;
+	private float angularVelocity;
 
-    public float maxVelocity = 50.0f; // Slower speed
-    public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
-    public boolean isAlive = true;
+	public float acceleration;
+	public float angularAcceleration;
 
-    public final String name;
-    public int score;
+	public float maxVelocity = 50.0f; // Pixels per second
+	public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
+	public boolean isAlive = true;
 
-    private static final float AABB_WIDTH = 25.0f;  // Match sprite size
-    private static final float AABB_HEIGHT = 25.0f; // Match sprite size
+	public final String name;
 
-    public Tank(String name, int score) {
-        this.name = name;
-        this.score = score;
-    }
+	public int score;
 
-    @Override
-    public boolean update(Simulation simulation, float delta) {
-        if (!isAlive) return false;
+	private PhysicsComponent physics;
 
-        // Gradual stop when no acceleration
-        if (acceleration == 0) {
-            velocity *= 0.9f; // Apply friction
-            if (Math.abs(velocity) < 0.01f) velocity = 0;
-        }
-        if (angularAcceleration == 0) {
-            angularVelocity *= 0.9f;
-            if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0;
-        }
+	public static final float MESH[] = {
+		-TANK_HEIGHT / 2, -TANK_WIDTH / 2,
+		-TANK_HEIGHT / 2, TANK_WIDTH / 2,
+		TANK_HEIGHT / 2, TANK_WIDTH / 2,
+		TANK_HEIGHT / 2, -TANK_WIDTH / 2
+	};
 
-        velocity = MathUtil.clamp(velocity + acceleration * delta, -maxVelocity, maxVelocity);
-        angularVelocity = MathUtil.clamp(angularVelocity + angularAcceleration * delta, -maxAngularVelocity, maxAngularVelocity);
+	public Tank(String name, int score) {
+		this.name = name;
+		this.score = score;
 
-        rotation += angularVelocity * delta;
+		this.physics = new PhysicsComponent(0, 0, 0, Tank.MESH);
+	}
 
-        float dx = (float) (velocity * Math.cos(rotation) * delta);
-        float dy = (float) (velocity * Math.sin(rotation) * delta);
+	@Override
+	public boolean update(Simulation simulation, float delta) {
+		if (!isAlive) return false;
 
-        x += dx;
-        y += dy;
+		this.x = physics.x;
+		this.y = physics.y;
+		this.rotation = physics.r;
 
-        if (simulation.handleTankWallCollision(this, dx, dy)) {
-            velocity = 0;
-            x -= dx;
-            y -= dy;
-        }
+		// Gradual stop when no acceleration
+		if (acceleration == 0) {
+			velocity *= 0.9f; // Apply friction
+			if (Math.abs(velocity) < 0.01f) velocity = 0; // Snap to zero
+		}
+		if (angularAcceleration == 0) {
+			angularVelocity *= 0.9f;
+			if (Math.abs(angularVelocity) < 0.01f) angularVelocity = 0;
+		}
 
-        return true;
-    }
+		// Update velocity and position
+		velocity = MathUtil.clamp(velocity + acceleration * delta, -maxVelocity, maxVelocity);
+		angularVelocity = MathUtil.clamp(angularVelocity + angularAcceleration * delta, -maxAngularVelocity, maxAngularVelocity);
 
-    public void kill(Simulation simulation, String message) {
-        isAlive = false;
-        System.out.println(name + ": " + message);
-    }
+		float dr = angularVelocity * delta;
+		float dx = (float) (velocity * Math.cos(rotation) * delta);
+		float dy = (float) (velocity * Math.sin(rotation) * delta);
 
-    @Override
-    public void serialize(StringBuilder buffer) {
-        buffer.append(this.name).append(" ")
-              .append(this.x).append(" ")
-              .append(this.y).append(" ")
-              .append(this.rotation).append(" ")
-              .append(this.score).append(" ")
-              .append(this.getAABBX()).append(" ")
-              .append(this.getAABBY()).append(" ")
-              .append(this.getAABBWidth()).append(" ")
-              .append(this.getAABBHeight()).append(" ")
-              .append("\n");
-    }
+		this.physics.dx = dx;
+		this.physics.dy = dy;
+		this.physics.dr = dr;
 
-    @Override
-    public float getAABBX() {
-        return this.x - (AABB_WIDTH / 2);
-    }
+		// rotation += dr;
+		// x += dx;
+		// y += dy;
 
-    @Override
-    public float getAABBY() {
-        return this.y - (AABB_HEIGHT / 2);
-    }
+		// Update AABB
+		final float width = Tank.TANK_WIDTH;
+		final float height = Tank.TANK_HEIGHT;
 
-    @Override
-    public float getAABBWidth() {
-        return AABB_WIDTH;
-    }
+		float dfr = this.rotation + physics.dr;
+		float dfx = this.x + physics.dx;
+		float dfy = this.y + physics.dy;
 
-    @Override
-    public float getAABBHeight() {
-        return AABB_HEIGHT;
-    }
+		this.aabb_width = (float)(Math.abs(Math.cos(dfr)) * height + Math.abs(Math.sin(dfr)) * width);
+		this.aabb_height = (float)(Math.abs(Math.sin(dfr)) * height + Math.abs(Math.cos(dfr)) * width);
+		this.aabb_x = dfx - this.aabb_width * 0.5f;
+		this.aabb_y = dfy - this.aabb_height * 0.5f;
 
-    @Override
-    public void collide(GameObject object) {
-        if (object instanceof Projectile) {
-            System.out.println("Tank hit by projectile!");
-        }
-    }
+		return true;
+	}
+
+	@Override
+	public void serialize(StringBuilder buffer) {
+		buffer
+			.append(this.name).append(" ")
+			.append(this.x).append(" ")
+			.append(this.y).append(" ")
+			.append(this.rotation).append(" ")
+			.append(this.score).append(" ")
+			.append(this.getAABBX()).append(" ")
+			.append(this.getAABBY()).append(" ")
+			.append(this.getAABBWidth()).append(" ")
+			.append(this.getAABBHeight()).append(" ")
+		;
+
+		float[] mesh = this.physics.getTransformMesh();
+		for (int i = 0; i < mesh.length; i++) {
+			buffer.append(mesh[i]).append(" ");
+		}
+
+		buffer.append("\n");
+	}
+
+	private float aabb_x, aabb_y;
+	private float aabb_width, aabb_height;
+
+	public float getX() {
+		return this.x;
+	}
+
+	public float getY() {
+		return this.y;
+	}
+
+	public float getRotation() {
+		return this.rotation;
+	}
+
+	public Tank setX(float x) {
+		this.x = x;
+		this.physics.x = x;
+
+		return this;
+	}
+
+	public Tank setY(float y) {
+		this.y = y;
+		this.physics.y = y;
+
+		return this;
+	}
+
+	public Tank setRotation(float rotation) {
+		this.rotation = rotation;
+		this.physics.r = rotation;
+
+		return this;
+	}
+
+	@Override
+	public float getAABBX() {
+		return this.aabb_x;
+	}
+
+	@Override
+	public float getAABBY() {
+		return this.aabb_y;
+	}
+
+	@Override
+	public float getAABBWidth() {
+		return this.aabb_width;
+	}
+
+	@Override
+	public float getAABBHeight() {
+		return this.aabb_height;
+	}
+
+	@Override
+	public void collide(Simulation simulation, Object object) {
+		this.acceleration = 0;
+		this.angularAcceleration = 0;
+
+		if (object instanceof Projectile) {
+			System.out.println("Tank hit projectile!");
+			this.isAlive = false;
+
+			simulation.showMessage(this.name + " looses!");
+		} else if (object instanceof Tank) {
+			System.out.println("Tank hit tank!");
+		} else if (object instanceof Wall) {
+			System.out.println("Tank hit wall!");
+		} else {
+			System.out.println("Tank hit unknown!");
+		}
+	}
+
+	@Override
+	public PhysicsComponent getPhysicsComponent() {
+		return this.physics;
+	}
 }
