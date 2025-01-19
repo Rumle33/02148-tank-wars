@@ -5,6 +5,7 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -24,6 +25,7 @@ import java.util.Set;
 
 public class Tank extends Application {
 
+	private boolean showDebug = true;
     private Space lobbySpace;
     private Space gameSpace;
     private String playerName;
@@ -87,7 +89,10 @@ public class Tank extends Application {
         });
 
         scene.setOnKeyReleased(event -> {
-            keysPressed.remove(event.getCode().toString());
+			if (event.getCode() == KeyCode.H) {
+				this.showDebug = !this.showDebug;
+			}
+			keysPressed.remove(event.getCode().toString());
             sendActionsToServer();
         });
     }
@@ -186,37 +191,41 @@ public class Tank extends Application {
 					mesh[i] = Float.parseFloat(parts[9 + i]);
 				}
 
-				Polygon polygon = new Polygon(mesh);
-				polygon.setFill(null);
-				polygon.setStroke(Color.ORANGE);
-				this.polygons.add(polygon);
-				root.getChildren().add(polygon);
+				if (this.showDebug)
+				{
+					// draw collision mesh
+					Polygon polygon = new Polygon(mesh);
+					polygon.setFill(null);
+					polygon.setStroke(Color.ORANGE);
+					this.polygons.add(polygon);
+					root.getChildren().add(polygon);
 
-				Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
-				quad.setFill(null);
-				quad.setStroke(Color.RED);
-				quad.setStrokeWidth(1); 
-				this.quads.add(quad);
-				root.getChildren().add(quad);
+					// draw AABB
+					Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+					quad.setFill(null);
+					quad.setStroke(Color.RED);
+					quad.setStrokeWidth(1); 
+					this.quads.add(quad);
+					root.getChildren().add(quad);
+				}
 
-                javafx.application.Platform.runLater(() -> {
-                    // System.out.println("Applying rotation for tank: " + playerName + " | Rotation: " + Math.toDegrees(rotation));
-                    ImageView tank = tanks.computeIfAbsent(playerName, playerNameKey -> {
-                        ImageView newTank = new ImageView(new Image(
-                                playerName.equals(this.playerName)
-                                        ? getClass().getResource("/assets/BlueTank.png").toExternalForm()
-                                        : getClass().getResource("/assets/RedTank.png").toExternalForm()
-                        ));
-                        newTank.setFitWidth(25);
-                        newTank.setFitHeight(25);
-                        root.getChildren().add(newTank);
-                        return newTank;
-                    });
+				// draw tank
+				ImageView tank = tanks.computeIfAbsent(playerName, playerNameKey -> {
+					ImageView newTank = new ImageView(new Image(
+							playerName.equals(this.playerName)
+									? getClass().getResource("/assets/BlueTank.png").toExternalForm()
+									: getClass().getResource("/assets/RedTank.png").toExternalForm()
+					));
+					newTank.setFitWidth(25);
+					newTank.setFitHeight(25);
+					root.getChildren().add(newTank);
+					return newTank;
+				});
 
-                    tank.setX(x - 12.5);
-                    tank.setY(y - 12.5);
-                    tank.setRotate(Math.toDegrees(rotation));
-                });
+				tank.setX(x - 12.5);
+				tank.setY(y - 12.5);
+				tank.setRotate(Math.toDegrees(rotation));
+                
             } else if (parts[0].equals("Projectile")) {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
@@ -230,20 +239,26 @@ public class Tank extends Application {
 				for (int i = 0; i < mesh.length; i++) {
 					mesh[i] = Float.parseFloat(parts[8 + i]);
 				}
-				
-				Polygon polygon = new Polygon(mesh);
-				polygon.setFill(null);
-				polygon.setStroke(Color.ORANGE);
-				this.polygons.add(polygon);
-				root.getChildren().add(polygon);
 
-				Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
-				quad.setFill(null);
-				quad.setStroke(Color.RED);
-				quad.setStrokeWidth(1); 
-				this.quads.add(quad);
-				root.getChildren().add(quad); 
+				if (this.showDebug)
+				{
+					// draw collision mesh
+					Polygon polygon = new Polygon(mesh);
+					polygon.setFill(null);
+					polygon.setStroke(Color.ORANGE);
+					this.polygons.add(polygon);
+					root.getChildren().add(polygon);
 
+					// draw AABB
+					Rectangle quad = new Rectangle(ax0, ay0, awidth, aheight);
+					quad.setFill(null);
+					quad.setStroke(Color.RED);
+					quad.setStrokeWidth(1); 
+					this.quads.add(quad);
+					root.getChildren().add(quad); 
+				}
+
+				// draw projectile
                 Circle projectile = new Circle(Projectile.PROJECTILE_RADIUS, Color.PURPLE);
                 projectile.setTranslateX(x);
                 projectile.setTranslateY(y);

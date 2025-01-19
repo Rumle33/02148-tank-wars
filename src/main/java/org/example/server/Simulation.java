@@ -20,6 +20,8 @@ public class Simulation {
 	private List<GameObject> dynamicObjects = new ArrayList<>();
 	private List<GameObject> dynamicBuffer = new ArrayList<>();
 
+	public static final boolean DEBUG = false;
+
     public Simulation(Space gameSpace, List<String> players) {
         this.gameSpace = gameSpace;
         this.mapWalls = new org.example.Maps.Map().getWalls();
@@ -49,6 +51,12 @@ public class Simulation {
 
 	public void showMessage(String message) {
 		System.out.println("[MESSAGE]> " + message); // Placeholder for actual UI messaging
+	}
+
+	public void debugPrint(String message) {
+		if (Simulation.DEBUG) {
+			System.out.println("[DEBUG]> " + message);
+		}
 	}
 
     public void handleMapRequests() {

@@ -175,16 +175,16 @@ public class Tank implements GameObject {
 		this.angularAcceleration = 0;
 
 		if (object instanceof Projectile) {
-			System.out.println("Tank hit projectile!");
+			simulation.debugPrint("Tank hit projectile!");
 			this.isAlive = false;
 
-			simulation.showMessage(this.name + " looses!");
+			simulation.showMessage(this.name + " loses!");
 		} else if (object instanceof Tank) {
-			System.out.println("Tank hit tank!");
+			simulation.debugPrint("Tank hit tank!");
 		} else if (object instanceof Wall) {
-			System.out.println("Tank hit wall!");
+			simulation.debugPrint("Tank hit wall!");
 		} else {
-			System.out.println("Tank hit unknown!");
+			simulation.debugPrint("Tank hit unknown!");
 		}
 	}
 

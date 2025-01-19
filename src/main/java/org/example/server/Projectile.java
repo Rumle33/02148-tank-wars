@@ -103,17 +103,17 @@ public class Projectile implements GameObject {
 	public void collide(Simulation simulation, Object object) {
 
 		if (object instanceof Tank) {
-			System.out.println("Projectile hit tank!");
+			simulation.debugPrint("Projectile hit tank!");
 			this.ttl = -1;
 
 			simulation.showMessage(shooter.name + " wins!");
 		}
 		else if (object instanceof Projectile) {
-			System.out.println("Projectile hit projectile!");
+			simulation.debugPrint("Projectile hit projectile!");
 			this.ttl = -1;
 		}
 		else if (object instanceof Wall) {
-			System.out.println("Projectil hit wall");
+			simulation.debugPrint("Projectil hit wall");
 			Wall wall = (Wall)object;
 			boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
 
@@ -124,7 +124,7 @@ public class Projectile implements GameObject {
 			}
 		}
 		else {
-			System.out.println("Projectile hit unknown!");
+			simulation.debugPrint("Projectile hit unknown!");
 		}
 
 	}
