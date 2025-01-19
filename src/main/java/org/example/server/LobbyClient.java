@@ -5,8 +5,8 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.jspace.*;
 
@@ -16,9 +16,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class LobbyClient extends Application {
-    private static final String SERVER_URI = "tcp://127.0.0.1:9001/lobby?keep";
+    private static final String LOBBY_URI = "tcp://127.0.0.1:9001/lobby?keep";
+    private static final String GAME_URI = "tcp://127.0.0.1:9002/game?keep";
 
     private RemoteSpace lobbySpace;
+    private RemoteSpace gameSpace;
     private final ListView<String> playerListView = new ListView<>();
     private final TextArea chatArea = new TextArea();
     private final TextField chatInput = new TextField();
@@ -89,13 +91,14 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Connects to the lobby server and signals JOIN.
+     * Connects to the lobby and game servers and signals JOIN.
      */
     private void connectToServer() {
         try {
-            System.out.println("Attempting to connect to server at " + SERVER_URI);
-            lobbySpace = new RemoteSpace(SERVER_URI);
-            System.out.println("Connection established to " + SERVER_URI);
+            System.out.println("Attempting to connect to server at " + LOBBY_URI);
+            lobbySpace = new RemoteSpace(LOBBY_URI);
+            gameSpace = new RemoteSpace(GAME_URI);
+            System.out.println("Connection established to lobby and game spaces.");
 
             // Send JOIN action
             lobbySpace.put(playerName, "JOIN");
@@ -106,7 +109,7 @@ public class LobbyClient extends Application {
 
         } catch (Exception e) {
             System.err.println("Connection failed: " + e.getMessage());
-            showError("Failed to connect to server. Ensure it is running at " + SERVER_URI);
+            showError("Failed to connect to server. Ensure it is running at " + LOBBY_URI);
         }
     }
 
@@ -135,7 +138,7 @@ public class LobbyClient extends Application {
                 );
 
                 // 3) Destructive read for START_GAME for this player
-                Object[] startGameTuple = lobbySpace.getp(
+                Object[] startGameTuple = gameSpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
@@ -181,8 +184,6 @@ public class LobbyClient extends Application {
      */
     private void refreshChat(List<Object[]> allChats) {
         chatArea.clear();
-        // Sort by time? (In jSpace, there's no timestamp by default.)
-        // We'll just display them in the order we get them:
         for (Object[] tuple : allChats) {
             String type = (String) tuple[0];  // "CHAT_MSG"
             String sender = (String) tuple[1];
@@ -228,24 +229,29 @@ public class LobbyClient extends Application {
 
     /**
      * Called once we detect ("START_GAME", playerName).
-     * Close the lobby or transition to the game scene.
+     * Close the lobby and open the game scene.
      */
     private void handleStartGame() {
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("Game Started!");
-        alert.setHeaderText(null);
-        alert.setContentText("The game is starting now for " + playerName + "!");
-        alert.showAndWait();
+        System.out.println("START_GAME signal received for player: " + playerName);
 
-        // Option 1: Close the lobby window
-        Stage stage = (Stage) playerListView.getScene().getWindow();
-        stage.close();
+        // Close the lobby window
+        Platform.runLater(() -> {
+            Stage stage = (Stage) playerListView.getScene().getWindow();
+            stage.close();
 
-        // Option 2: Or just hide chat controls if you prefer, e.g.:
-        // chatArea.setVisible(false);
-        // chatInput.setVisible(false);
-        // sendButton.setVisible(false);
-        // readyButton.setVisible(false);
+            // Launch the game scene
+            Stage gameStage = new Stage();
+            VBox gameRoot = new VBox(10);
+            gameRoot.setPadding(new Insets(10));
+
+            Label gameLabel = new Label("Game Scene");
+            gameRoot.getChildren().add(gameLabel);
+
+            Scene gameScene = new Scene(gameRoot, 600, 400);
+            gameStage.setScene(gameScene);
+            gameStage.setTitle("Tank Game");
+            gameStage.show();
+        });
     }
 
     /**
@@ -289,7 +295,7 @@ public class LobbyClient extends Application {
     }
 
     public static void main(String[] args) {
-        System.out.println("Starting LobbyClient with SERVER_URI: " + SERVER_URI);
+        System.out.println("Starting LobbyClient with SERVER_URI: " + LOBBY_URI);
         launch(args);
     }
 }
