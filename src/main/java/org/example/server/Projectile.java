@@ -114,8 +114,23 @@ public class Projectile implements GameObject {
 		}
 		else if (object instanceof Wall) {
 			simulation.debugPrint("Projectil hit wall");
+
 			Wall wall = (Wall)object;
 			boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
+
+			if (isHorizontal && 
+				(
+					this.getAABBX() + this.getAABBWidth() < Math.min(wall.getEndX(), wall.getStartX()) || 
+					this.getAABBX() > Math.max(wall.getEndX(), wall.getStartX())
+				)
+			) {
+				isHorizontal = !isHorizontal;
+			} else if (
+				this.getAABBY() + this.getAABBHeight() < Math.min(wall.getEndY(), wall.getStartY()) || 
+				this.getAABBY() > Math.max(wall.getEndY(), wall.getStartY())
+			) {
+				isHorizontal = !isHorizontal;
+			}
 
 			if (isHorizontal) {
 				this.physics.dr = - 2 * rotation; // Reverse Y direction
