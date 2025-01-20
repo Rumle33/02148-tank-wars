@@ -90,9 +90,9 @@ public class LobbyServer {
                 synchronized (players) {
                     // For each known player, remove old "UPDATE" then insert fresh
                     for (String name : players.keySet()) {
-                        lobbySpace.getp(new ActualField("UPDATE"), new ActualField(name), new FormalField(Boolean.class));
+                        lobbySpace.getp(new ActualField("LOBBY"), new ActualField("UPDATE"), new ActualField(name), new FormalField(Boolean.class));
                         Boolean isReady = players.get(name);
-                        lobbySpace.put("UPDATE", name, isReady);
+                        lobbySpace.put("LOBBY", "UPDATE", name, isReady);
                     }
                 }
             } catch (InterruptedException e) {

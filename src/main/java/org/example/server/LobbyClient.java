@@ -119,6 +119,7 @@ public class LobbyClient {
             try {
                 // (1) Non-destructive read of all "UPDATE"
                 List<Object[]> allUpdates = lobbySpace.queryAll(
+                        new ActualField("LOBBY"),
                         new ActualField("UPDATE"),
                         new FormalField(String.class),
                         new FormalField(Boolean.class)
@@ -126,6 +127,7 @@ public class LobbyClient {
 
                 // (2) Non-destructive read of all "CHAT_MSG"
                 List<Object[]> allChats = lobbySpace.queryAll(
+                        new ActualField("LOBBY"),
                         new ActualField("CHAT_MSG"),
                         new FormalField(String.class),
                         new FormalField(String.class)
@@ -158,9 +160,9 @@ public class LobbyClient {
     private void refreshPlayerList(List<Object[]> allUpdates) {
         playerListView.getItems().clear();
         for (Object[] tuple : allUpdates) {
-            String type = (String) tuple[0]; // "UPDATE"
-            String updatedPlayer = (String) tuple[1];
-            Boolean isReadyStatus = (Boolean) tuple[2];
+            String type = (String) tuple[1]; // "UPDATE"
+            String updatedPlayer = (String) tuple[2];
+            Boolean isReadyStatus = (Boolean) tuple[3];
 
             if ("UPDATE".equals(type)) {
                 String displayName = updatedPlayer.equals(playerName)
@@ -178,9 +180,9 @@ public class LobbyClient {
     private void refreshChat(List<Object[]> allChats) {
         chatArea.clear();
         for (Object[] tuple : allChats) {
-            String type = (String) tuple[0];  // "CHAT_MSG"
-            String sender = (String) tuple[1];
-            String message = (String) tuple[2];
+            String type = (String) tuple[1];  // "CHAT_MSG"
+            String sender = (String) tuple[2];
+            String message = (String) tuple[3];
 
             if ("CHAT_MSG".equals(type)) {
                 chatArea.appendText(sender + ": " + message + "\n");
