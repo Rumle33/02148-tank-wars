@@ -99,7 +99,7 @@ public class Tank extends Application {
 
     private void shootProjectile() {
         long currentTime = System.currentTimeMillis();
-        if (currentTime - lastShotTime >= 100) { // 1-second cooldown
+        if (currentTime - lastShotTime >= 1000) { // 1-second cooldown
             lastShotTime = currentTime;
 
             try {

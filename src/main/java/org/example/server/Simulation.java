@@ -13,7 +13,7 @@ public class Simulation {
     private final Space gameSpace;
     private final Map<String, Tank> playerTanks = new HashMap<>();
 	
-	public static final int UPS = 60;
+	public static final int UPS = 100;
 	public static final int MILLI_WAIT = 1000 / UPS;
 	
     private final List<Wall> mapWalls;
