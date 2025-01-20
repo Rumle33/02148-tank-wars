@@ -2,6 +2,7 @@ package org.example.Tank;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -13,6 +14,8 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
 import org.example.Maps.Wall;
 import org.example.server.Projectile;
 import org.jspace.Space;
@@ -54,6 +57,17 @@ public class Tank extends Application {
             primaryStage.setTitle("Tank Game");
             primaryStage.show();
 
+			primaryStage.getScene().getWindow().setOnCloseRequest(
+				new EventHandler<WindowEvent>() {
+
+					@Override
+					public void handle(WindowEvent event) {
+						System.exit(0);
+					}
+					
+				}
+			);
+
 
             new Thread(this::joinLobby).start();
             setupKeyHandling(scene);
@@ -66,13 +80,16 @@ public class Tank extends Application {
     public void joinLobby() {
         try {
             playerName = "Player" + (int) (Math.random() * 1000);
-            lobbySpace.put("JOIN", playerName);
-            lobbySpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
+            gameSpace.put("JOIN", playerName);
+			System.out.println("[CLIENT] joined as " + playerName);
+            gameSpace.get(new org.jspace.ActualField("START_GAME"), new org.jspace.ActualField(playerName));
 
+			System.out.println("[CLIENT] requesting map as " + playerName);
             gameSpace.put("REQUEST_MAP", playerName);
             Object[] mapData = gameSpace.get(new org.jspace.ActualField("MAP"), new org.jspace.FormalField(String.class));
             renderMap((String) mapData[1]);
 
+			System.out.println("[CLIENT] starting game");
             javafx.application.Platform.runLater(this::startGame);
         } catch (InterruptedException e) {
             e.printStackTrace();

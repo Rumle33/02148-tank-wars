@@ -31,9 +31,9 @@ public class LobbyServer {
             while (true) {
                 System.out.println("Waiting for player actions...");
                 // Wait for a tuple of shape (String, String)
-                Object[] tuple = lobbySpace.get(new FormalField(String.class), new FormalField(String.class));
-                String playerName = (String) tuple[0];
+                Object[] tuple = lobbySpace.get(new ActualField("LOBBY"), new FormalField(String.class), new FormalField(String.class));
                 String action = (String) tuple[1];
+                String playerName = (String) tuple[2];
 
                 System.out.println("Received action: " + action + " from: " + playerName);
 
@@ -64,7 +64,6 @@ public class LobbyServer {
                             players.put(playerName, false);
                             System.out.println(playerName + " is not ready. Current players: " + players);
                             break;
-
                         default:
                             System.err.println("Unknown action: " + action);
                             break;
@@ -129,7 +128,7 @@ public class LobbyServer {
 
                             synchronized (players) {
                                 // Debugging information
-                                System.out.println("Preparing to start game between: " + readyPlayers);
+                                System.out.println("[LOBBY SERVER] Preparing to start game between: " + readyPlayers);
 
                                 // Remove players from the lobby
                                 players.remove(readyPlayers.get(0));
@@ -141,16 +140,19 @@ public class LobbyServer {
                                         new FormalField(String.class),
                                         new FormalField(String.class)
                                 );
-                                System.out.println("Removed all chat messages from the lobby.");
+                                System.out.println("[LOBBY SERVER] Removed all chat messages from the lobby.");
 
                                 // Send START_GAME to the game space
-                                gameSpace.put("START_GAME", readyPlayers.get(0));
-                                gameSpace.put("START_GAME", readyPlayers.get(1));
-                                System.out.println("START_GAME signal sent for players: " + readyPlayers);
+                                lobbySpace.put("START_GAME", readyPlayers.get(0));
+                                lobbySpace.put("START_GAME", readyPlayers.get(1));
+
+                                System.out.println("[LOBBY SERVER] START_GAME signal sent for players: " + readyPlayers);
+
+								lobbySpace.put("START_SERVER");
 
                                 // Reset the flag and debug information
                                 gameStarted = false;
-                                System.out.println("Game started successfully. Flag reset.");
+                                System.out.println("[LOBBY SERVER] Game started successfully. Flag reset.");
                             }
                         } catch (InterruptedException e) {
                             e.printStackTrace();

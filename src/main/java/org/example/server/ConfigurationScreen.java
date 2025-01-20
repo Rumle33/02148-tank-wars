@@ -1,5 +1,6 @@
 package org.example.server;
 
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -10,6 +11,8 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
 import org.example.Tank.Tank;
 import org.jspace.*;
 
@@ -49,6 +52,17 @@ public class ConfigurationScreen {
         root.getChildren().addAll(titleLabel, playerNameLabel, playerNameField, ipLabel, ipField, portLabel, portField, hostOrJoinButton, backButton);
 
         this.scene = new Scene(root, 800, 800);
+
+		primaryStage.getScene().getWindow().setOnCloseRequest(
+			new EventHandler<WindowEvent>() {
+
+				@Override
+				public void handle(WindowEvent event) {
+					System.exit(0);
+				}
+				
+			}
+		);
     }
 
     private VBox createRootLayout() {

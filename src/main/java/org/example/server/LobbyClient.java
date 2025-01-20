@@ -96,7 +96,7 @@ public class LobbyClient {
     private void connectAndStartPolling() {
         try {
             // Send JOIN action to the lobby
-            lobbySpace.put(playerName, "JOIN");
+            lobbySpace.put("LOBBY", "JOIN", playerName);
             System.out.println("Connected to server as " + playerName);
 
             startPollingUpdates();
@@ -132,7 +132,7 @@ public class LobbyClient {
                 );
 
                 // (3) Destructive read for "START_GAME" for this player
-                Object[] startGameTuple = gameSpace.getp(
+                Object[] startGameTuple = lobbySpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
@@ -197,7 +197,7 @@ public class LobbyClient {
             readyButton.setText(ready ? "Ready" : "Not Ready");
             readyButton.setStyle(ready ? "-fx-background-color: green;" : "-fx-background-color: red;");
 
-            lobbySpace.put(playerName, ready ? "READY" : "NOT_READY");
+            lobbySpace.put("LOBBY", ready ? "READY" : "NOT_READY", playerName);
             System.out.println(playerName + " is now " + (ready ? "ready" : "not ready"));
         } catch (InterruptedException e) {
             showError("Error toggling ready status: " + e.getMessage());
@@ -211,7 +211,7 @@ public class LobbyClient {
         String text = chatInput.getText().trim();
         if (!text.isEmpty()) {
             try {
-                lobbySpace.put("CHAT_MSG", playerName, text);
+                lobbySpace.put("LOBBY", "CHAT_MSG", playerName, text);
                 chatInput.clear();
             } catch (InterruptedException e) {
                 showError("Error sending chat message: " + e.getMessage());
@@ -224,7 +224,7 @@ public class LobbyClient {
      * You can close the lobby UI and open your game scene from here.
      */
     private void handleStartGame() {
-        System.out.println("START_GAME signal received for player: " + playerName);
+        System.out.println("[LOBBY CLIENT] START_GAME signal received for player: " + playerName);
 
         // Stop the polling thread and build your real game UI
         stopPollingUpdates();
@@ -279,7 +279,7 @@ public class LobbyClient {
     public void leaveLobby() {
         try {
             if (lobbySpace != null && playerName != null && !playerName.isEmpty()) {
-                lobbySpace.put(playerName, "LEAVE");
+                lobbySpace.put("LOBBY", "LEAVE", playerName);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

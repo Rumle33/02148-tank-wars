@@ -1,5 +1,6 @@
 package org.example.server;
 
+import org.jspace.ActualField;
 import org.jspace.SequentialSpace;
 import org.jspace.Space;
 import org.jspace.SpaceRepository;
@@ -19,26 +20,27 @@ public class TankServer {
     }
 
     public void start() {
-        System.out.println("Waiting for players to join...");
-
+		
         try {
-            while (connectedPlayers.size() < MAX_PLAYERS) {
-                Object[] playerInfo = lobbySpace.get(new org.jspace.ActualField("JOIN"), new org.jspace.FormalField(String.class));
+			lobbySpace.get(new ActualField("START_SERVER"));
+			while (connectedPlayers.size() < MAX_PLAYERS) {
+				System.out.println("[TANK SERVER] waiting for players...");
+                Object[] playerInfo = gameSpace.get(new org.jspace.ActualField("JOIN"), new org.jspace.FormalField(String.class));
                 String playerName = (String) playerInfo[1];
 
                 if (!connectedPlayers.contains(playerName)) {
                     connectedPlayers.add(playerName);
-                    System.out.println("Player joined: " + playerName + ". Total players: " + connectedPlayers.size());
-                    lobbySpace.put("PLAYER_JOINED", playerName, connectedPlayers.size());
+                    System.out.println("[TANK SERVER] Player joined: " + playerName + ". Total players: " + connectedPlayers.size());
+                    gameSpace.put("PLAYER_JOINED", playerName, connectedPlayers.size());
                 } else {
-                    System.out.println("Duplicate player name: " + playerName);
-                    lobbySpace.put("ERROR", "Name already taken. Choose another.");
+                    System.out.println("[TANK SERVER] Duplicate player name: " + playerName);
+                    gameSpace.put("ERROR", "Name already taken. Choose another.");
                 }
             }
 
-            System.out.println("All players joined! Starting the game...");
+            System.out.println("[TANK SERVER] All players joined! Starting the game...");
             for (String player : connectedPlayers) {
-                lobbySpace.put("START_GAME", player);
+                gameSpace.put("START_GAME", player);
             }
             startGameLoop();
 
