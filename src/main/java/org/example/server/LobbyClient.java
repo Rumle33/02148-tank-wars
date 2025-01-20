@@ -81,7 +81,7 @@ public class LobbyClient {
                 chatControls
         );
 
-        Scene scene = new Scene(root, 400, 500);
+        Scene scene = new Scene(root, 800, 800);
 
         // Actually join the lobby (put the JOIN tuple) and start polling
         connectAndStartPolling();
@@ -276,7 +276,7 @@ public class LobbyClient {
     }
 
     /**
-     * Call this when closing the lobby so the server knows you left.
+     * Calls when closing the lobby so the server knows you left.
      */
     public void leaveLobby() {
         try {

@@ -4,10 +4,7 @@ import org.jspace.*;
 import java.util.*;
 
 public class LobbyServer {
-    private static final String LOBBY_URI = "tcp://127.0.0.1:9001/lobby?keep";
-    private static final String GAME_URI = "tcp://127.0.0.1:9002/game?keep";
 
-    private static SpaceRepository repository;
     private static Space lobbySpace;
     private static Space gameSpace;
     private static final Map<String, Boolean> players = new HashMap<>();
