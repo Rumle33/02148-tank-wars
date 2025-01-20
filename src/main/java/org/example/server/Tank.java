@@ -18,7 +18,7 @@ public class Tank implements GameObject {
 	public float angularAcceleration;
 
 	public float maxVelocity = 50.0f; // Pixels per second
-	public float maxAngularVelocity = (float) Math.toRadians(30.0f); // Degrees per second
+	public float maxAngularVelocity = (float) Math.toRadians(60.0f); // Degrees per second
 	public boolean isAlive = true;
 
 	public final String name;

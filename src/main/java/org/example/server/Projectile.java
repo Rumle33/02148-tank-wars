@@ -10,8 +10,8 @@ public class Projectile implements GameObject {
 	public float x;
 	public float y;
 	public float rotation;
-	public float velocity = 250.0f; // Adjust for visible speed
-	public float ttl = 3.0f; // Time to live in seconds
+	public float velocity = 150.0f; // Adjust for visible speed
+	public float ttl = 10.0f; // Time to live in seconds
 	
 	private PhysicsComponent physics;
     private final Tank shooter; // Reference to the shooter
