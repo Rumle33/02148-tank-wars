@@ -8,6 +8,8 @@ public interface GameObject extends AABB {
 
 	public void serialize(StringBuilder buffer);
 
-	public void collide(GameObject object);
+	public void collide(Simulation simulation, Object object);
+
+	public PhysicsComponent getPhysicsComponent();
 
 }

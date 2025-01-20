@@ -1,6 +1,5 @@
 package org.example.util;
 
-import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -63,6 +62,34 @@ public class Vector2f {
 
 		this.x *= factor;
 		this.y *= factor;
+
+		return this;
+	}
+
+	public Vector2f add(float x, float y) {
+		this.x += x;
+		this.y += y;
+
+		return this;
+	}
+
+	public Vector2f add(Vector2f v) {
+		this.x += v.x;
+		this.y += v.y;
+		
+		return this;
+	}
+	
+	public Vector2f subtract(Vector2f v) {
+		this.x -= v.x;
+		this.y -= v.y;
+
+		return this;
+	}
+
+	public Vector2f subtract(float x, float y) {
+		this.x -= x;
+		this.y -= y;
 
 		return this;
 	}
