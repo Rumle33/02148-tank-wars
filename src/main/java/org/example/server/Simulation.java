@@ -100,6 +100,10 @@ public class Simulation {
 			while (true) {
 				long currentTime = System.currentTimeMillis();
 
+				if (currentTime - lastTime > MILLI_WAIT) {
+					System.out.println("[WARNING] server unable to keep up, " + (currentTime - lastTime) + " ms behind");
+				}
+
 				while (currentTime - lastTime < MILLI_WAIT) {
 					Thread.sleep(Math.max(0, MILLI_WAIT - currentTime + lastTime - 1));
 					currentTime = System.currentTimeMillis();

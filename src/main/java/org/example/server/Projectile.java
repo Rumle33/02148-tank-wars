@@ -17,7 +17,7 @@ public class Projectile implements GameObject {
     private final Tank shooter; // Reference to the shooter
 
 	static {
-		int points = 8;
+		int points = 1000;
 		Projectile.MESH = new float[points * 2];
 
 		for (int i = 0; i < points; i++) {
@@ -117,20 +117,6 @@ public class Projectile implements GameObject {
 
 			Wall wall = (Wall)object;
 			boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
-
-			if (isHorizontal && 
-				(
-					this.getAABBX() + this.getAABBWidth() < Math.min(wall.getEndX(), wall.getStartX()) || 
-					this.getAABBX() > Math.max(wall.getEndX(), wall.getStartX())
-				)
-			) {
-				isHorizontal = !isHorizontal;
-			} else if (
-				this.getAABBY() + this.getAABBHeight() < Math.min(wall.getEndY(), wall.getStartY()) || 
-				this.getAABBY() > Math.max(wall.getEndY(), wall.getStartY())
-			) {
-				isHorizontal = !isHorizontal;
-			}
 
 			if (isHorizontal) {
 				this.physics.dr = - 2 * rotation; // Reverse Y direction
