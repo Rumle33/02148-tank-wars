@@ -167,8 +167,10 @@ public class ConfigurationScreen {
         } catch (Exception e){
             e.printStackTrace();
         }
-            new Thread(lobbyServer::handleLobby).start();
-            new Thread(lobbyServer::broadcastUpdates).start();
+        new Thread(lobbyServer::broadcastUpdates).start();
+        new Thread(lobbyServer::handleLobby).start();
+
+
 
     }
 

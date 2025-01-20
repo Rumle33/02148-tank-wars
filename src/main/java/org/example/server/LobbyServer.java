@@ -125,7 +125,7 @@ public class LobbyServer {
 
                     new Thread(() -> {
                         try {
-                            Thread.sleep(3000);
+                            Thread.sleep(1000);
 
                             synchronized (players) {
                                 // Debugging information
