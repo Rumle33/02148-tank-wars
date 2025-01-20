@@ -18,12 +18,14 @@ import javafx.stage.WindowEvent;
 
 import org.example.Maps.Wall;
 import org.example.server.Projectile;
+import org.jspace.ActualField;
 import org.jspace.Space;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 public class Tank extends Application {
@@ -163,7 +165,14 @@ public class Tank extends Application {
 
     private void updateGameState() {
         try {
+            if(gameSpace.getp(new org.jspace.ActualField("MaP ReSeT"),new org.jspace.ActualField(playerName)) != null ){
+                gameSpace.put("REQUEST_MAP", playerName);
+                Object[] mapData = gameSpace.get(new org.jspace.ActualField("MAP"), new org.jspace.FormalField(String.class));
+                renderMap((String) mapData[1]);
+            }
+
             Object[] state = gameSpace.get(new org.jspace.ActualField("STATE"), new org.jspace.FormalField(String.class));
+
             if (state != null) {
                 renderGameState((String) state[1]);
             }
@@ -287,6 +296,8 @@ public class Tank extends Application {
 
     private void renderMap(String mapData) {
         javafx.application.Platform.runLater(() -> {
+            root.getChildren().clear();
+
             String[] lines = mapData.split("\n");
             for (String line : lines) {
                 String[] parts = line.split(" ");
@@ -305,6 +316,11 @@ public class Tank extends Application {
                 root.getChildren().add(wall);
             }
             System.out.println("Map rendered successfully.");
+            for(Entry<String, ImageView> entry: tanks.entrySet()){
+                root.getChildren().add(entry.getValue());
+
+            }
+
         });
     }
 

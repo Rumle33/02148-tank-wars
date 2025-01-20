@@ -107,6 +107,7 @@ public class Projectile implements GameObject {
 			this.ttl = -1;
 
 			simulation.showMessage(shooter.name + " wins!");
+            simulation.ReSeTSiM();
 		}
 		else if (object instanceof Projectile) {
 			simulation.debugPrint("Projectile hit projectile!");
