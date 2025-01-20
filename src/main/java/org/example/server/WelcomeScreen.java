@@ -23,7 +23,6 @@ public class WelcomeScreen extends Application {
 
 		primaryStage.getScene().getWindow().setOnCloseRequest(
 			new EventHandler<WindowEvent>() {
-
 				@Override
 				public void handle(WindowEvent event) {
 					System.exit(0);

@@ -1,5 +1,6 @@
 package org.example.server;
 
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -10,11 +11,11 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
 import org.example.Tank.Tank;
-import org.jspace.RemoteSpace;
-import org.jspace.SequentialSpace;
-import org.jspace.Space;
-import org.jspace.SpaceRepository;
+import org.jspace.*;
+
 import java.net.InetAddress;
 
 
@@ -51,6 +52,17 @@ public class ConfigurationScreen {
         root.getChildren().addAll(titleLabel, playerNameLabel, playerNameField, ipLabel, ipField, portLabel, portField, hostOrJoinButton, backButton);
 
         this.scene = new Scene(root, 800, 800);
+
+		primaryStage.getScene().getWindow().setOnCloseRequest(
+			new EventHandler<WindowEvent>() {
+
+				@Override
+				public void handle(WindowEvent event) {
+					System.exit(0);
+				}
+				
+			}
+		);
     }
 
     private VBox createRootLayout() {
@@ -88,6 +100,13 @@ public class ConfigurationScreen {
         String address;
         boolean valid = true;
 
+        if(playerNameField.getText().isEmpty()){
+            playerNameField.setStyle("-fx-background-color: #ffffff; -fx-border-color: red; -fx-border-radius: 5px; -fx-padding: 5px;");
+            playerNameField.clear();
+            playerNameField.setPromptText("Please Enter a Name");
+            valid = false;
+        }
+
         try {
             if (portField.getText().isEmpty()) {
                 port = STANDARD_PORT_NUMBER;
@@ -119,13 +138,17 @@ public class ConfigurationScreen {
             if (isHost) {
                 System.out.println("Proceeding with Player Name: " + playerNameField.getText() + ", Address: " + address + ", Port: " + port);
                 intializeServer(address, port);
+                //switchToLobbyScene(primaryStage, address, port, playerNameField.getText());
+
 
             } else {
-                switchToGameScene(primaryStage, address, port);
+                switchToLobbyScene(primaryStage, address, port, playerNameField.getText());
+
                 System.out.println("Joining server at Address: " + address + ", Port: " + port);
             }
 
-            if (isHost)  switchToGameScene(primaryStage, address, port);
+            if (isHost)  switchToLobbyScene(primaryStage, address, port, playerNameField.getText());
+
 
 
         }
@@ -144,8 +167,24 @@ public class ConfigurationScreen {
         SpaceRepository repository = new SpaceRepository();
         repository.add("lobby", lobbySpace);
         repository.add("game", gameSpace);
-
         repository.addGate(uri);
+
+        LobbyServer lobbyServer = new LobbyServer(lobbySpace, gameSpace);
+
+        try {
+            lobbySpace.getAll(new ActualField("UPDATE"), new FormalField(String.class), new FormalField(Boolean.class));
+            gameSpace.getAll(new ActualField("START_GAME"), new FormalField(String.class));
+            // Remove any old chat messages
+            lobbySpace.getAll(new ActualField("CHAT_MSG"), new FormalField(String.class), new FormalField(String.class));
+            System.out.println("Cleaned up old tuples in the lobby space.");
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        new Thread(lobbyServer::broadcastUpdates).start();
+        new Thread(lobbyServer::handleLobby).start();
+
+
+
     }
 
     public boolean isValidIPAddress(String ip) {
@@ -157,27 +196,30 @@ public class ConfigurationScreen {
         }
     }
 
-    private void switchToGameScene(Stage primaryStage, String address, int port) {
+
+
+    private void switchToLobbyScene(Stage primaryStage, String address, int port, String playerName) {
         try {
-            Space lobbySpace = new RemoteSpace("tcp://" + address + ":" + port + "/lobby?keep");
-            Space gameSpace = new RemoteSpace("tcp://" + address + ":" + port + "/game?keep");
+            // Create RemoteSpaces for the lobby & game
+            RemoteSpace lobbySpace = new RemoteSpace("tcp://" + address + ":" + port + "/lobby?keep");
+            RemoteSpace gameSpace  = new RemoteSpace("tcp://" + address + ":" + port + "/game?keep");
 
-            Pane root = new Pane();
-            Tank tank = new Tank();
+            // Create an instance of your new LobbyClient
+            LobbyClient lobbyClient = new LobbyClient();
+            lobbyClient.setLobbySpace(lobbySpace);
+            lobbyClient.setGameSpace(gameSpace);
 
+            // Build the scene
+            Scene lobbyScene = lobbyClient.createLobbyScene(playerName);
 
-            tank.setLobbySpace(lobbySpace);
-            tank.setGameSpace(gameSpace);
-            tank.setRoot(root);
-
-            tank.start(primaryStage);
+            // Switch to the new scene
+            primaryStage.setScene(lobbyScene);
+            primaryStage.show();
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
-
 
 
     public Scene getScene() {
