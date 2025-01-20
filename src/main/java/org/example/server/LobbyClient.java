@@ -1,6 +1,5 @@
 package org.example.server;
 
-import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -8,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.example.Tank.Tank;
 import org.jspace.*;
 
 import java.util.List;
@@ -15,101 +15,95 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class LobbyClient extends Application {
-    private static final String LOBBY_URI = "tcp://127.0.0.1:9001/lobby?keep";
-    private static final String GAME_URI = "tcp://127.0.0.1:9002/game?keep";
-
+public class LobbyClient {
+    // Spaces
     private RemoteSpace lobbySpace;
     private RemoteSpace gameSpace;
+
+    // UI
     private final ListView<String> playerListView = new ListView<>();
     private final TextArea chatArea = new TextArea();
     private final TextField chatInput = new TextField();
     private final Button sendButton = new Button("Send");
-
-    private boolean ready = false;
     private final Button readyButton = new Button("Not Ready");
+
+    // State
+    private boolean ready = false;
     private String playerName;
     private ScheduledExecutorService scheduler;
 
     // Adjust the client poll interval
     private static final int POLL_INTERVAL_MS = 300;
 
-    @Override
-    public void start(Stage primaryStage) {
-        VBox root = new VBox(10);
-        root.setPadding(new Insets(10));
+    /**
+     * Provide these two set methods so you can pass the spaces from outside:
+     */
+    public void setLobbySpace(RemoteSpace lobbySpace) {
+        this.lobbySpace = lobbySpace;
+    }
 
-        Label nameLabel = new Label("Enter your player name:");
-        TextField nameField = new TextField();
-        Button joinButton = new Button("Join Lobby");
-
-        // Initially hide the lobby UI (we'll show it after join)
-        VBox lobbyUI = new VBox(10);
-        Label lobbyLabel = new Label("Lobby - Connected Players");
-        readyButton.setStyle("-fx-background-color: red;");
-        readyButton.setDisable(true); // disabled until we join
-
-        // Set up chat
-        chatArea.setEditable(false);
-        chatArea.setPrefHeight(200);
-        HBox chatControls = new HBox(5, chatInput, sendButton);
-        chatControls.setPrefHeight(30);
-
-        // Put the player list, ready button, chat area, chat input all together
-        lobbyUI.getChildren().addAll(lobbyLabel, playerListView, readyButton, new Label("Lobby Chat:"), chatArea, chatControls);
-
-        // We'll initially show just the name input
-        root.getChildren().addAll(nameLabel, nameField, joinButton);
-
-        Scene scene = new Scene(root, 400, 500);
-        primaryStage.setScene(scene);
-        primaryStage.setTitle("Tank Game Lobby");
-        primaryStage.show();
-
-        // Handle the "Join Lobby" button
-        joinButton.setOnAction(e -> {
-            String name = nameField.getText().trim();
-            if (!name.isEmpty()) {
-                playerName = name;
-
-                // Clear the UI and show the lobby interface
-                root.getChildren().clear();
-                root.getChildren().add(lobbyUI);
-                readyButton.setDisable(false);
-
-                connectToServer();
-            } else {
-                showError("Player name cannot be empty!");
-            }
-        });
-
-        // Toggle ready on button click
-        readyButton.setOnAction(e -> toggleReadyStatus());
-
-        // Send chat messages on button click
-        sendButton.setOnAction(e -> sendChatMessage());
+    public void setGameSpace(RemoteSpace gameSpace) {
+        this.gameSpace = gameSpace;
     }
 
     /**
-     * Connects to the lobby and game servers and signals JOIN.
+     * Build and return the entire Lobby scene. You call this once you have set
+     * the lobbySpace/gameSpace and the player's name.
      */
-    private void connectToServer() {
-        try {
-            System.out.println("Attempting to connect to server at " + LOBBY_URI);
-            lobbySpace = new RemoteSpace(LOBBY_URI);
-            gameSpace = new RemoteSpace(GAME_URI);
-            System.out.println("Connection established to lobby and game spaces.");
+    public Scene createLobbyScene(String playerName) {
+        this.playerName = playerName;
 
-            // Send JOIN action
+        // Outer layout
+        VBox root = new VBox(10);
+        root.setPadding(new Insets(10));
+
+        // The top label and readiness button
+        Label lobbyLabel = new Label("Lobby - Connected Players");
+        readyButton.setStyle("-fx-background-color: red;");
+        readyButton.setDisable(false); // enabled after we "join"
+        readyButton.setOnAction(e -> toggleReadyStatus());
+
+        // Chat area
+        chatArea.setEditable(false);
+        chatArea.setPrefHeight(200);
+
+        HBox chatControls = new HBox(5, chatInput, sendButton);
+        chatControls.setPrefHeight(30);
+        sendButton.setOnAction(e -> sendChatMessage());
+
+        // Put it all together
+        root.getChildren().addAll(
+                lobbyLabel,
+                playerListView,
+                readyButton,
+                new Label("Lobby Chat:"),
+                chatArea,
+                chatControls
+        );
+
+        Scene scene = new Scene(root, 400, 500);
+
+        // Actually join the lobby (put the JOIN tuple) and start polling
+        connectAndStartPolling();
+
+        return scene;
+    }
+
+    /**
+     * Connect to the spaces by putting (playerName, "JOIN"), then start
+     * a background thread to poll for updates & "START_GAME" signals.
+     */
+    private void connectAndStartPolling() {
+        try {
+            // Send JOIN action to the lobby
             lobbySpace.put(playerName, "JOIN");
             System.out.println("Connected to server as " + playerName);
 
-            // Start polling the space for updates and START_GAME signal
             startPollingUpdates();
 
         } catch (Exception e) {
             System.err.println("Connection failed: " + e.getMessage());
-            showError("Failed to connect to server. Ensure it is running at " + LOBBY_URI);
+            showError("Failed to connect to server. Ensure it is running.");
         }
     }
 
@@ -117,33 +111,32 @@ public class LobbyClient extends Application {
      * Periodically reads:
      *   1) ALL ("UPDATE", somePlayer, isReady) tuples (non-destructive)
      *   2) ALL ("CHAT_MSG", somePlayer, message) tuples (non-destructive)
-     *   3) Then a "START_GAME" (thisPlayer) destructively
+     *   3) Then a "START_GAME" (thisPlayer) destructively from the game space
      */
     private void startPollingUpdates() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                // 1) Non-destructive read of all "UPDATE"
+                // (1) Non-destructive read of all "UPDATE"
                 List<Object[]> allUpdates = lobbySpace.queryAll(
                         new ActualField("UPDATE"),
                         new FormalField(String.class),
                         new FormalField(Boolean.class)
                 );
 
-                // 2) Non-destructive read of all "CHAT_MSG"
+                // (2) Non-destructive read of all "CHAT_MSG"
                 List<Object[]> allChats = lobbySpace.queryAll(
                         new ActualField("CHAT_MSG"),
-                        new FormalField(String.class),  // sender
-                        new FormalField(String.class)   // message
+                        new FormalField(String.class),
+                        new FormalField(String.class)
                 );
 
-                // 3) Destructive read for START_GAME for this player
+                // (3) Destructive read for "START_GAME" for this player
                 Object[] startGameTuple = gameSpace.getp(
                         new ActualField("START_GAME"),
                         new ActualField(playerName)
                 );
 
-                // Update the UI in the JavaFX thread
                 Platform.runLater(() -> {
                     refreshPlayerList(allUpdates);
                     refreshChat(allChats);
@@ -160,7 +153,7 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Clear and rebuild the entire player list from "UPDATE" tuples.
+     * Update the player list from "UPDATE" tuples.
      */
     private void refreshPlayerList(List<Object[]> allUpdates) {
         playerListView.getItems().clear();
@@ -180,7 +173,7 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Clear and rebuild the chat area from "CHAT_MSG" tuples.
+     * Update the chat area from "CHAT_MSG" tuples.
      */
     private void refreshChat(List<Object[]> allChats) {
         chatArea.clear();
@@ -196,7 +189,7 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Toggles the ready state for this player and notifies the server.
+     * Toggle ready status and inform server
      */
     private void toggleReadyStatus() {
         try {
@@ -212,13 +205,12 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Sends a chat message as ("CHAT_MSG", playerName, text).
+     * Send chat message as ("CHAT_MSG", playerName, text)
      */
     private void sendChatMessage() {
         String text = chatInput.getText().trim();
         if (!text.isEmpty()) {
             try {
-                // Put a 3-field tuple for chat
                 lobbySpace.put("CHAT_MSG", playerName, text);
                 chatInput.clear();
             } catch (InterruptedException e) {
@@ -228,34 +220,39 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Called once we detect ("START_GAME", playerName).
-     * Close the lobby and open the game scene.
+     * Received "START_GAME" for this player.
+     * You can close the lobby UI and open your game scene from here.
      */
     private void handleStartGame() {
         System.out.println("START_GAME signal received for player: " + playerName);
 
-        // Close the lobby window
+        // Stop the polling thread and build your real game UI
+        stopPollingUpdates();
+
         Platform.runLater(() -> {
-            Stage stage = (Stage) playerListView.getScene().getWindow();
-            stage.close();
+            // 1) Close the current lobby stage
+            Stage lobbyStage = (Stage) playerListView.getScene().getWindow();
+            lobbyStage.close();
 
-            // Launch the game scene
+            // 2) Create a new Stage for the game
             Stage gameStage = new Stage();
-            VBox gameRoot = new VBox(10);
-            gameRoot.setPadding(new Insets(10));
 
-            Label gameLabel = new Label("Game Scene");
-            gameRoot.getChildren().add(gameLabel);
+            // 3) Create a new root Pane (or any layout node)
+            Pane root = new Pane();
 
-            Scene gameScene = new Scene(gameRoot, 600, 400);
-            gameStage.setScene(gameScene);
-            gameStage.setTitle("Tank Game");
-            gameStage.show();
+            // 4) Instantiate and configure your Tank
+            Tank tank = new Tank();
+            tank.setLobbySpace(lobbySpace);
+            tank.setGameSpace(gameSpace);
+            tank.setRoot(root);
+
+            // 5) Start the Tank game on the new game stage
+            tank.start(gameStage);
         });
     }
 
     /**
-     * Shows an error message in a JavaFX Alert.
+     * Show error in UI
      */
     private void showError(String message) {
         Platform.runLater(() -> {
@@ -268,25 +265,7 @@ public class LobbyClient extends Application {
     }
 
     /**
-     * Called when the application is about to exit.
-     * We notify the server that this player has left the lobby.
-     */
-    @Override
-    public void stop() {
-        // Attempt to send a LEAVE action
-        try {
-            if (lobbySpace != null && playerName != null && !playerName.isEmpty()) {
-                lobbySpace.put(playerName, "LEAVE");
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        stopPollingUpdates();
-    }
-
-    /**
-     * Properly shuts down the scheduler that polls for lobby updates.
+     * Gracefully stop the polling thread
      */
     private void stopPollingUpdates() {
         if (scheduler != null && !scheduler.isShutdown()) {
@@ -294,8 +273,17 @@ public class LobbyClient extends Application {
         }
     }
 
-    public static void main(String[] args) {
-        System.out.println("Starting LobbyClient with SERVER_URI: " + LOBBY_URI);
-        launch(args);
+    /**
+     * Call this when closing the lobby so the server knows you left.
+     */
+    public void leaveLobby() {
+        try {
+            if (lobbySpace != null && playerName != null && !playerName.isEmpty()) {
+                lobbySpace.put(playerName, "LEAVE");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        stopPollingUpdates();
     }
 }

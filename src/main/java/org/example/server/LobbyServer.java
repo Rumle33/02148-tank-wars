@@ -16,43 +16,17 @@ public class LobbyServer {
     // Speed up broadcast so clients see changes quickly
     private static final int BROADCAST_DELAY_MS = 300;
 
-    public static void main(String[] args) {
-        repository = new SpaceRepository();
-        lobbySpace = new SequentialSpace();
-        gameSpace = new SequentialSpace();
-        repository.add("lobby", lobbySpace);
-        repository.add("game", gameSpace);
-
-        try {
-            // Open the TCP gates
-            repository.addGate("tcp://127.0.0.1:9001/?keep");
-            repository.addGate("tcp://127.0.0.1:9002/?keep");
-            System.out.println("LobbyServer started on " + LOBBY_URI);
-            System.out.println("GameServer started on " + GAME_URI);
-
-            // 1) Clear out any old data in case of leftover from previous runs
-            lobbySpace.getAll(new ActualField("UPDATE"), new FormalField(String.class), new FormalField(Boolean.class));
-            gameSpace.getAll(new ActualField("START_GAME"), new FormalField(String.class));
-            // Remove any old chat messages
-            lobbySpace.getAll(new ActualField("CHAT_MSG"), new FormalField(String.class), new FormalField(String.class));
-            System.out.println("Cleaned up old tuples in the lobby space.");
-
-        } catch (Exception e) {
-            System.err.println("Error opening gates: " + e.getMessage());
-            e.printStackTrace();
-            return;
-        }
-
-        // Threads to handle actions and to broadcast "UPDATE"
-        new Thread(LobbyServer::handleLobby).start();
-        new Thread(LobbyServer::broadcastUpdates).start();
+    public LobbyServer(Space lobbySpace, Space gameSpace) {
+        this.lobbySpace = lobbySpace;
+        this.gameSpace = gameSpace;
     }
+
 
     /**
      * Continuously wait for player actions: JOIN, LEAVE, READY, NOT_READY.
      * (Does NOT handle CHAT_MSG, so those remain in the space.)
      */
-    private static void handleLobby() {
+    public void handleLobby() {
         try {
             while (true) {
                 System.out.println("Waiting for player actions...");
@@ -109,7 +83,7 @@ public class LobbyServer {
     /**
      * Periodically updates ("UPDATE", playerName, isReady) for each player.
      */
-    private static void broadcastUpdates() {
+    public void broadcastUpdates() {
         while (true) {
             try {
                 Thread.sleep(BROADCAST_DELAY_MS);
