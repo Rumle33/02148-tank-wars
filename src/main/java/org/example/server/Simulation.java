@@ -35,7 +35,8 @@ public class Simulation {
             for (String player : players) {
                 Tank tank = new Tank(player, 0);
                 // Unique starting positions
-                tank.setX(175 + (i * 400)).setY(300);
+                tank.setX(125 + (i * 400)).setY(325);
+				tank.setRotation((float)Math.PI * (float)i);
                 playerTanks.put(player, tank);
                 this.dynamicObjects.add(tank);
                 i++;

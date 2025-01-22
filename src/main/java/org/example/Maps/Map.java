@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Random;
 
 public class Map {
-    private static final int GRID_SIZE = 15;
-    private static final int CELL_SIZE = 40;
+    private static final int GRID_SIZE = 16;
+    private static final int CELL_SIZE = 50;
 
     private final List<Wall> walls = new ArrayList<>();
     private final Random random = new Random();

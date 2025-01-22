@@ -30,7 +30,7 @@ import java.util.Set;
 
 public class Tank extends Application {
 
-	private boolean showDebug = true;
+	private boolean showDebug = false;
     private Space lobbySpace;
     private Space gameSpace;
     private String playerName;
@@ -51,8 +51,7 @@ public class Tank extends Application {
                 throw new IllegalStateException("Spaces and root must be initialized before starting the game.");
             }
 
-
-            Scene scene = new Scene(root, 800, 600);
+            Scene scene = new Scene(root, 800, 800);
             this.scene = scene;
 
             primaryStage.setScene(scene);

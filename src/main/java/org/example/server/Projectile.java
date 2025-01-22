@@ -17,17 +17,24 @@ public class Projectile implements GameObject {
     private final Tank shooter; // Reference to the shooter
 
 	static {
-		int points = 1000;
-		Projectile.MESH = new float[points * 2];
+		// This causes issue 
 
-		for (int i = 0; i < points; i++) {
-			float angle = (float)i / (float)points * (float)Math.PI * 2.0f;
-			Projectile.MESH[i * 2 + 0] = PROJECTILE_RADIUS * (float) Math.cos(angle);
-			Projectile.MESH[i * 2 + 1] = PROJECTILE_RADIUS * (float) Math.sin(angle);
-		}
+		// int points = 256;
+		// Projectile.MESH = new float[points * 2];
+
+		// for (int i = 0; i < points; i++) {
+		// 	float angle = (float)i / (float)points * (float)Math.PI * 2.0f;
+		// 	Projectile.MESH[i * 2 + 0] = PROJECTILE_RADIUS * (float) Math.cos(angle);
+		// 	Projectile.MESH[i * 2 + 1] = PROJECTILE_RADIUS * (float) Math.sin(angle);
+		// }
 	}
 
-	public static float MESH[];
+	public static float MESH[] = {
+		-PROJECTILE_RADIUS, -PROJECTILE_RADIUS,
+		-PROJECTILE_RADIUS, PROJECTILE_RADIUS,
+		PROJECTILE_RADIUS, PROJECTILE_RADIUS,
+		PROJECTILE_RADIUS, -PROJECTILE_RADIUS
+	};
 
 	public Projectile(float x, float y, float rotation, Tank shooter) {
 		this.x = x;
@@ -118,6 +125,33 @@ public class Projectile implements GameObject {
 
 			Wall wall = (Wall)object;
 			boolean isHorizontal = Math.abs(wall.getEndY() - wall.getStartY()) < Math.abs(wall.getEndX() - wall.getStartX());
+
+			float wx0 = (float) Math.min(wall.getStartX(), wall.getEndX());
+			float wx1 = (float) Math.max(wall.getStartX(), wall.getEndX());
+
+			float wy0 = (float) Math.min(wall.getStartY(), wall.getEndY());
+			float wy1 = (float) Math.max(wall.getStartY(), wall.getEndY());
+
+			if (isHorizontal) {
+				if (this.getAABBX() > wx1) {
+					isHorizontal = false;
+					this.physics.dx = 1;
+				}
+				else if (this.getAABBX() + this.getAABBWidth() < wx0) {
+					isHorizontal = false;
+					this.physics.dx = -1;
+				}
+			}
+			else {
+				if (this.getAABBY() > wy1) {
+					isHorizontal = true;
+					this.physics.dy = 1;
+				}
+				else if (this.getAABBY() + this.getAABBHeight() < wy0) {
+					isHorizontal = true;
+					this.physics.dy = -1;
+				}
+			}
 
 			if (isHorizontal) {
 				this.physics.dr = - 2 * rotation; // Reverse Y direction
