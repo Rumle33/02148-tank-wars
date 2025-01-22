@@ -158,6 +158,7 @@ public class Projectile implements GameObject {
 			} else {
 				this.physics.dr = (float)Math.PI - 2 * rotation; // Reverse X direction
 			}
+			this.velocity = (float)Math.min(this.velocity + 25, 750);
 		}
 		else {
 			simulation.debugPrint("Projectile hit unknown!");
